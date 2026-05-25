@@ -22,3 +22,10 @@ export function logout(): Promise<ApiResponse<null>> {
 export function getCurrentUser(): Promise<ApiResponse<UserInfo>> {
   return request.get('/auth/me')
 }
+
+export function changePassword(data: {
+  current_password: string
+  new_password: string
+}): Promise<ApiResponse<{ updated: boolean }>> {
+  return request.post('/auth/change-password', data)
+}

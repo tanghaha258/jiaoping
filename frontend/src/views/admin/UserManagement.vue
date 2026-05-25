@@ -4,7 +4,7 @@
       <div>
         <p class="eyebrow">账号运营</p>
         <h1>用户管理</h1>
-        <p>维护教师、学生、学校管理员和教研员账号，保障真实部署后的人员可用。</p>
+        <p>维护教师、学生、学校管理员和教研员账号，试运行前可统一重置初始密码。</p>
       </div>
       <div class="header-actions">
         <el-button :icon="Refresh" :loading="loading" @click="loadUsers">刷新</el-button>
@@ -55,10 +55,11 @@
         <el-table-column label="最近登录" width="180" align="center">
           <template #default="{ row }">{{ formatDate(row.last_login_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="190" fixed="right" align="center">
+        <el-table-column label="操作" width="260" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link @click="viewDetail(row)">详情</el-button>
             <el-button type="primary" link @click="openEdit(row)">编辑</el-button>
+            <el-button type="primary" link @click="openResetPassword(row)">重置密码</el-button>
             <el-button type="warning" link @click="toggleStatus(row)">
               {{ row.status === 'active' ? '停用' : '启用' }}
             </el-button>
@@ -131,6 +132,39 @@
         <el-button type="primary" :loading="saving" @click="submitForm">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="resetPasswordVisible"
+      title="重置用户密码"
+      width="480px"
+      :close-on-click-modal="false"
+    >
+      <el-alert
+        v-if="resetPasswordUser"
+        :title="`正在重置账号：${resetPasswordUser.username}`"
+        type="warning"
+        show-icon
+        :closable="false"
+      />
+      <el-form
+        ref="resetPasswordFormRef"
+        :model="resetPasswordForm"
+        :rules="resetPasswordRules"
+        label-width="96px"
+        class="reset-form"
+      >
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="resetPasswordForm.newPassword" type="password" show-password maxlength="100" />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input v-model="resetPasswordForm.confirmPassword" type="password" show-password maxlength="100" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="resetPasswordVisible = false">取消</el-button>
+        <el-button type="primary" :loading="resetPasswordSaving" @click="submitResetPassword">确认重置</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -144,6 +178,7 @@ import {
   getAdminUsers,
   getClasses,
   getSchools,
+  resetAdminUserPassword,
   updateAdminUser,
   updateAdminUserStatus
 } from '@/api/admin'
@@ -172,11 +207,15 @@ const schools = ref<SchoolItem[]>([])
 const classes = ref<ClassItem[]>([])
 const selectedUser = ref<AdminUserItem | null>(null)
 const editingUser = ref<AdminUserItem | null>(null)
+const resetPasswordUser = ref<AdminUserItem | null>(null)
 const loading = ref(false)
 const saving = ref(false)
+const resetPasswordSaving = ref(false)
 const detailVisible = ref(false)
 const formVisible = ref(false)
+const resetPasswordVisible = ref(false)
 const formRef = ref<FormInstance>()
+const resetPasswordFormRef = ref<FormInstance>()
 
 const filters = reactive({ keyword: '', role: '', status: '' })
 const pagination = reactive({ page: 1, pageSize: 20, total: 0 })
@@ -195,12 +234,32 @@ const form = reactive<{
   school_id: null,
   class_id: null
 })
+const resetPasswordForm = reactive({
+  newPassword: '',
+  confirmPassword: ''
+})
 
 const rules: FormRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, min: 6, message: '密码至少 6 位', trigger: 'blur' }],
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }]
+}
+const resetPasswordRules: FormRules = {
+  newPassword: [{ required: true, min: 6, message: '密码至少 6 位', trigger: 'blur' }],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (value !== resetPasswordForm.newPassword) {
+          callback(new Error('两次输入的密码不一致'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ]
 }
 
 function formatDate(value?: string | null) {
@@ -337,7 +396,7 @@ async function toggleStatus(row: AdminUserItem) {
   const nextStatus = row.status === 'active' ? 'disabled' : 'active'
   try {
     await ElMessageBox.confirm(
-      `确认${nextStatus === 'active' ? '启用' : '停用'}用户「${row.name}」？`,
+      `确认${nextStatus === 'active' ? '启用' : '停用'}用户“${row.name}”？`,
       '账号状态',
       { type: 'warning' }
     )
@@ -347,6 +406,30 @@ async function toggleStatus(row: AdminUserItem) {
   await updateAdminUserStatus(row.id, nextStatus)
   ElMessage.success('用户状态已更新')
   await loadUsers()
+}
+
+function openResetPassword(row: AdminUserItem) {
+  resetPasswordUser.value = row
+  resetPasswordForm.newPassword = ''
+  resetPasswordForm.confirmPassword = ''
+  resetPasswordVisible.value = true
+}
+
+async function submitResetPassword() {
+  if (!resetPasswordFormRef.value || !resetPasswordUser.value) return
+  const valid = await resetPasswordFormRef.value.validate().catch(() => false)
+  if (!valid) return
+
+  resetPasswordSaving.value = true
+  try {
+    await resetAdminUserPassword(resetPasswordUser.value.id, resetPasswordForm.newPassword)
+    ElMessage.success('密码已重置')
+    resetPasswordVisible.value = false
+  } catch (e: any) {
+    ElMessage.error(e?.message || '重置密码失败')
+  } finally {
+    resetPasswordSaving.value = false
+  }
 }
 
 onMounted(async () => {
@@ -414,6 +497,10 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.reset-form {
+  margin-top: 18px;
 }
 
 @media (max-width: 760px) {

@@ -111,6 +111,13 @@ export function updateAdminUserStatus(id: string, status: string): Promise<ApiRe
   return request.patch(`/users/${id}/status`, { status })
 }
 
+export function resetAdminUserPassword(
+  id: string,
+  newPassword: string
+): Promise<ApiResponse<{ updated: boolean; user_id: string }>> {
+  return request.post(`/users/${id}/reset-password`, { new_password: newPassword })
+}
+
 export function getRegions(params?: {
   page?: number
   page_size?: number

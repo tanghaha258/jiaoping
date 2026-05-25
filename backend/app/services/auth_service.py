@@ -8,11 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
-from app.core.exceptions import InvalidCredentialsException, TokenExpiredException
+from app.core.exceptions import InvalidCredentialsException, InvalidStateTransitionException, TokenExpiredException
 from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_password,
     verify_password,
 )
 from app.models.user import User
@@ -73,6 +74,26 @@ class AuthService:
             raise InvalidCredentialsException("User not found or inactive")
 
         return AuthService._build_token_response(user)
+
+    @staticmethod
+    async def change_password(
+        db: AsyncSession,
+        user: User,
+        current_password: str,
+        new_password: str,
+    ) -> User:
+        """Change the current user's password after verifying the old password."""
+        if not verify_password(current_password, user.password_hash):
+            raise InvalidStateTransitionException("Current password is incorrect")
+
+        if verify_password(new_password, user.password_hash):
+            raise InvalidStateTransitionException("New password must be different")
+
+        user.password_hash = hash_password(new_password)
+        db.add(user)
+        await db.flush()
+        await db.refresh(user)
+        return user
 
     @staticmethod
     def _build_token_response(user: User) -> dict:

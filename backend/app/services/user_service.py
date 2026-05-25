@@ -135,3 +135,13 @@ class UserService:
         await db.flush()
         await db.refresh(user)
         return user
+
+    @staticmethod
+    async def reset_password(db: AsyncSession, user_id: str, new_password: str) -> User:
+        """Reset a user's password as an administrator."""
+        user = await UserService.get_user(db, user_id)
+        user.password_hash = hash_password(new_password)
+        db.add(user)
+        await db.flush()
+        await db.refresh(user)
+        return user

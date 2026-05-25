@@ -32,6 +32,12 @@ class UserStatusUpdate(BaseModel):
     status: str = Field(..., pattern="^(active|disabled|locked)$")
 
 
+class ResetPasswordRequest(BaseModel):
+    """Schema for system-admin password reset."""
+
+    new_password: str = Field(..., min_length=6, max_length=100)
+
+
 class UserResponse(BaseModel):
     """Schema for user response data."""
 

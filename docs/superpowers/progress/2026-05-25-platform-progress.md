@@ -41,6 +41,11 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Added local start, release-check, and deployment smoke scripts.
   - [x] Added local and Docker trial deployment documentation.
   - [x] Verified Phase 4 readiness tests.
+- [x] Phase 5: Add trial account password operations.
+  - [x] Added self-service password change contract and tests.
+  - [x] Added system-admin password reset contract and tests.
+  - [x] Added teacher settings password form.
+  - [x] Added admin user reset-password dialog.
 
 ## Decisions
 
@@ -96,3 +101,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-25: Added `backend/.env.example`, `frontend/.env.example`, `scripts/start-local.ps1`, `scripts/check-release.ps1`, `scripts/smoke_deploy.py`, and `docs/DEPLOYMENT.md`.
 - 2026-05-25: Verified Phase 4 TDD with `python -m pytest backend/tests/test_deployment_readiness.py -q` (`3 passed`).
 - 2026-05-25: Verified Phase 4 full release path with `python -m pytest backend/tests -q` (`14 passed`), `python -m compileall backend\app`, `npm run build`, `python scripts\smoke_deploy.py`, and `powershell -ExecutionPolicy Bypass -File scripts\check-release.ps1`.
+- 2026-05-25: Started Phase 5 account security hardening for trial operation.
+- 2026-05-25: Added password-change and admin reset-password backend tests, then implemented `/api/v1/auth/change-password` and `/api/v1/users/{user_id}/reset-password`.
+- 2026-05-25: Verified Phase 5 backend with `python -m pytest backend/tests/test_account_security.py -q` (`3 passed`).
+- 2026-05-25: Added teacher password form and admin reset-password dialog, then verified with `npm run build`.

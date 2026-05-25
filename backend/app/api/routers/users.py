@@ -3,11 +3,17 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user, get_db, require_roles
+from app.core.deps import get_db, require_roles
 from app.core.response import success_response
 from app.models.user import User
-from app.schemas.common import PaginationParams
-from app.schemas.user import UserCreate, UserUpdate, UserStatusUpdate, UserResponse
+from app.schemas.user import (
+    ResetPasswordRequest,
+    UserCreate,
+    UserResponse,
+    UserStatusUpdate,
+    UserUpdate,
+)
+from app.services.audit_service import create_audit_log
 from app.services.user_service import UserService
 
 router = APIRouter(prefix="/users")
@@ -44,7 +50,7 @@ async def create_user(
     """Create a new user."""
     user = await UserService.create_user(db=db, data=data)
     user_response = UserResponse.model_validate(user)
-    return success_response(data=user_response.model_dump(), message="用户创建成功")
+    return success_response(data=user_response.model_dump(), message="User created")
 
 
 @router.get("/{user_id}")
@@ -69,7 +75,7 @@ async def update_user(
     """Update user information."""
     user = await UserService.update_user(db=db, user_id=user_id, data=data)
     user_response = UserResponse.model_validate(user)
-    return success_response(data=user_response.model_dump(), message="用户更新成功")
+    return success_response(data=user_response.model_dump(), message="User updated")
 
 
 @router.patch("/{user_id}/status")
@@ -82,4 +88,24 @@ async def change_user_status(
     """Enable or disable a user account."""
     user = await UserService.change_user_status(db=db, user_id=user_id, status=data.status)
     user_response = UserResponse.model_validate(user)
-    return success_response(data=user_response.model_dump(), message="用户状态更新成功")
+    return success_response(data=user_response.model_dump(), message="User status updated")
+
+
+@router.post("/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: str,
+    data: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("system_admin")),
+):
+    """Reset a user's password as a system administrator."""
+    user = await UserService.reset_password(db=db, user_id=user_id, new_password=data.new_password)
+    await create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="user.reset_password",
+        target_type="user",
+        target_id=user.id,
+        detail={"target_username": user.username},
+    )
+    return success_response(data={"updated": True, "user_id": user.id}, message="Password reset")

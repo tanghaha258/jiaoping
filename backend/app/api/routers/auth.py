@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user, get_db
 from app.core.response import success_response
 from app.models.user import User
-from app.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, UserInfo
-from app.services.auth_service import AuthService
+from app.schemas.auth import ChangePasswordRequest, LoginRequest, RefreshRequest, UserInfo
 from app.services.audit_service import create_audit_log
+from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth")
 
@@ -22,7 +22,6 @@ async def login(request: LoginRequest, fastapi_request: Request, db: AsyncSessio
         password=request.password,
     )
 
-    # Audit log: record successful login
     user_id = result.get("user", {}).get("id")
     if user_id:
         await create_audit_log(
@@ -35,7 +34,7 @@ async def login(request: LoginRequest, fastapi_request: Request, db: AsyncSessio
             user_agent=fastapi_request.headers.get("user-agent"),
         )
 
-    return success_response(data=result, message="登录成功")
+    return success_response(data=result, message="Login successful")
 
 
 @router.post("/refresh")
@@ -52,8 +51,34 @@ async def refresh_token(request: RefreshRequest, db: AsyncSession = Depends(get_
 async def logout(
     current_user: User = Depends(get_current_user),
 ):
-    """Logout current user. (Token invalidation is handled client-side for JWT.)"""
-    return success_response(data=None, message="已退出登录")
+    """Logout current user. Token invalidation is handled client-side for JWT."""
+    return success_response(data={"user_id": current_user.id}, message="Logged out")
+
+
+@router.post("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    fastapi_request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Change the current user's password after verifying the current password."""
+    await AuthService.change_password(
+        db=db,
+        user=current_user,
+        current_password=request.current_password,
+        new_password=request.new_password,
+    )
+    await create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="user.change_password",
+        target_type="user",
+        target_id=current_user.id,
+        ip=fastapi_request.client.host if fastapi_request.client else None,
+        user_agent=fastapi_request.headers.get("user-agent"),
+    )
+    return success_response(data={"updated": True}, message="Password updated")
 
 
 @router.get("/me")
