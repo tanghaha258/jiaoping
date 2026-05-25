@@ -34,6 +34,13 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Admin school/class/subject/region management page.
   - [x] Admin settings, audit log, and AI call ledger pages.
   - [x] Phase 3 verification, browser smoke, commit, and push.
+- [x] Phase 4: Harden deployment readiness for trial operation.
+  - [x] Added liveness/readiness health contract design and implementation plan.
+  - [x] Added backend readiness checks for database, uploads, seed data, and AI provider mode.
+  - [x] Added backend/frontend environment examples.
+  - [x] Added local start, release-check, and deployment smoke scripts.
+  - [x] Added local and Docker trial deployment documentation.
+  - [x] Verified Phase 4 readiness tests.
 
 ## Decisions
 
@@ -84,3 +91,8 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-25: Rebuilt admin user management, school management, system settings, audit logs, AI call history, and admin dashboard with real APIs and readable Chinese copy.
 - 2026-05-25: Verified Phase 3 backend with `python -m pytest backend/tests/test_admin_operations.py -q` (`3 passed`) and all backend tests with `python -m pytest backend/tests -q` (`11 passed`).
 - 2026-05-25: Verified frontend with `npm run build` and Edge-smoked admin dashboard, users, schools, settings, audit logs, and AI calls pages.
+- 2026-05-25: Started Phase 4 deployment readiness hardening.
+- 2026-05-25: Added `GET /api/v1/health/ready` with database, upload directory, core seed-data, and AI provider-mode checks.
+- 2026-05-25: Added `backend/.env.example`, `frontend/.env.example`, `scripts/start-local.ps1`, `scripts/check-release.ps1`, `scripts/smoke_deploy.py`, and `docs/DEPLOYMENT.md`.
+- 2026-05-25: Verified Phase 4 TDD with `python -m pytest backend/tests/test_deployment_readiness.py -q` (`3 passed`).
+- 2026-05-25: Verified Phase 4 full release path with `python -m pytest backend/tests -q` (`14 passed`), `python -m compileall backend\app`, `npm run build`, `python scripts\smoke_deploy.py`, and `powershell -ExecutionPolicy Bypass -File scripts\check-release.ps1`.
