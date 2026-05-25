@@ -20,12 +20,12 @@
 - Modify: `backend/app/api/routers/ai.py`
 - Test: `backend/tests/test_ai_contract_progress.py`
 
-- [ ] Step 1: Add tests for `/ai/contracts` and `/ai/calls/{id}/progress`.
-- [ ] Step 2: Run tests and confirm they fail because the endpoints do not exist.
-- [ ] Step 3: Add `AICallStep` model and progress serialization.
-- [ ] Step 4: Return local contract definitions for each AI scenario.
-- [ ] Step 5: Insert/update thinking steps when lesson-plan drafts are generated and adopted.
-- [ ] Step 6: Run tests and compile backend.
+- [x] Step 1: Add tests for `/ai/contracts` and `/ai/calls/{id}/progress`.
+- [x] Step 2: Run tests and confirm they fail because the endpoints do not exist.
+- [x] Step 3: Add `AICallStep` model and progress serialization.
+- [x] Step 4: Return local contract definitions for each AI scenario.
+- [x] Step 5: Insert/update thinking steps when lesson-plan drafts are generated and adopted.
+- [x] Step 6: Run tests and compile backend.
 
 ### Task 2: Admin AI Agent CRUD
 
@@ -36,11 +36,11 @@
 - Modify: `frontend/src/api/ai.ts`
 - Modify: `frontend/src/views/admin/AIAgentConfig.vue`
 
-- [ ] Step 1: Add typed create/update agent API helpers.
-- [ ] Step 2: Add backend soft-delete support so CRUD is complete.
-- [ ] Step 3: Replace placeholder admin page with list, filters, detail drawer, create/edit dialog, and enable switch.
-- [ ] Step 4: Surface provider contract fields and reserved GJT config fields.
-- [ ] Step 5: Run backend CRUD tests and frontend build.
+- [x] Step 1: Add typed create/update agent API helpers.
+- [x] Step 2: Add backend soft-delete support so CRUD is complete.
+- [x] Step 3: Replace placeholder admin page with list, filters, detail drawer, create/edit dialog, and enable switch.
+- [x] Step 4: Surface provider contract fields and reserved GJT config fields.
+- [x] Step 5: Run backend CRUD tests and frontend build.
 
 ### Task 3: Teacher Resource CRUD and Hierarchy
 
@@ -48,11 +48,11 @@
 - Modify: `frontend/src/api/resources.ts`
 - Modify: `frontend/src/views/teacher/ResourceCenter.vue`
 
-- [ ] Step 1: Add create/update/delete resource API helpers.
-- [ ] Step 2: Replace demo card-only resource center with real list hierarchy.
-- [ ] Step 3: Add resource detail drawer and create/edit dialog.
-- [ ] Step 4: Add delete confirmation and reload behavior.
-- [ ] Step 5: Run frontend build.
+- [x] Step 1: Add create/update/delete resource API helpers.
+- [x] Step 2: Replace demo card-only resource center with real list hierarchy.
+- [x] Step 3: Add resource detail drawer and create/edit dialog.
+- [x] Step 4: Add delete confirmation and reload behavior.
+- [x] Step 5: Run frontend build.
 
 ### Task 4: Project and Task Layer Cleanup
 
@@ -60,19 +60,19 @@
 - Modify: `frontend/src/views/teacher/ProjectList.vue`
 - Modify: `frontend/src/views/teacher/ProjectDetail.vue`
 
-- [ ] Step 1: Remove demo fallback from normal API success paths.
-- [ ] Step 2: Make empty states explicit instead of silently showing demo data.
-- [ ] Step 3: Ensure task create/edit/detail flow uses dialogs or drawers.
-- [ ] Step 4: Run frontend build.
+- [x] Step 1: Remove demo fallback from normal API success paths.
+- [x] Step 2: Make empty states explicit instead of silently showing demo data.
+- [x] Step 3: Ensure task create/edit/detail flow uses dialogs or drawers.
+- [x] Step 4: Run frontend build.
 
 ### Task 5: Verification, Commit, and Push
 
 **Files:**
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 
-- [ ] Step 1: Run backend compile/test verification.
-- [ ] Step 2: Run frontend build.
-- [ ] Step 3: Smoke test login, AI draft, AI progress, resource CRUD.
-- [ ] Step 4: Update progress document with verified results.
-- [ ] Step 5: Add remote `https://github.com/tanghaha258/jiaoping.git` if missing.
+- [x] Step 1: Run backend compile/test verification.
+- [x] Step 2: Run frontend build.
+- [x] Step 3: Smoke test login, AI draft, AI progress, resource CRUD.
+- [x] Step 4: Update progress document with verified results.
+- [x] Step 5: Add remote `https://github.com/tanghaha258/jiaoping.git` if missing.
 - [ ] Step 6: Commit and push branch `codex/agent-contract-crud`.

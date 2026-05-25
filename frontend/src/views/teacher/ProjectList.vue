@@ -3,31 +3,27 @@
     <el-card class="page-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">跨学科项目管理</span>
-          <el-button type="primary" :icon="Plus" @click="showCreateDialog = true">
-            创建项目
-          </el-button>
+          <div>
+            <div class="card-title">跨学科项目管理</div>
+            <div class="card-subtitle">管理教学评一体化项目，项目激活后才能继续创建和发布课时任务。</div>
+          </div>
+          <div class="header-actions">
+            <el-button :icon="MagicStick" @click="goToAILessonPlan">AI 生成教学方案</el-button>
+            <el-button type="primary" :icon="Plus" @click="showCreateDialog = true">
+              创建项目
+            </el-button>
+          </div>
         </div>
       </template>
 
-      <!-- Filters -->
       <div class="filter-bar">
-        <el-select
+        <el-segmented
           v-model="filterStatus"
-          placeholder="项目状态"
-          clearable
-          style="width: 160px"
+          :options="statusFilters"
           @change="handleFilterChange"
-        >
-          <el-option label="全部" value="" />
-          <el-option label="草稿" value="draft" />
-          <el-option label="进行中" value="active" />
-          <el-option label="已完成" value="completed" />
-          <el-option label="已归档" value="archived" />
-        </el-select>
+        />
       </div>
 
-      <!-- Table -->
       <el-table
         :data="items"
         v-loading="loading"
@@ -36,40 +32,37 @@
         empty-text="暂无项目，请创建项目或使用 AI 生成教学方案"
         style="width: 100%"
       >
-        <el-table-column prop="name" label="项目名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="grade" label="年级" width="90" align="center" />
-        <el-table-column label="学科" min-width="160">
+        <el-table-column prop="name" label="项目名称" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="grade" label="年级" width="100" align="center" />
+        <el-table-column label="学科" min-width="180">
           <template #default="{ row }">
-            <el-tag
-              v-for="subject in row.subjects"
-              :key="subject.id"
-              size="small"
-              style="margin-right: 4px; margin-bottom: 2px"
-            >
-              {{ subject.name }}
-            </el-tag>
-            <span v-if="!row.subjects || row.subjects.length === 0">-</span>
+            <div class="tag-list">
+              <el-tag
+                v-for="subject in row.subjects"
+                :key="subject.id"
+                size="small"
+                effect="plain"
+              >
+                {{ subject.name }}
+              </el-tag>
+              <span v-if="!row.subjects || row.subjects.length === 0" class="muted">-</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100" align="center">
+        <el-table-column label="状态" width="110" align="center">
           <template #default="{ row }">
             <StatusTag :status="row.status" :type-map="statusTypeMap" :text-map="statusTextMap" />
           </template>
         </el-table-column>
-        <el-table-column label="课时" width="70" align="center">
+        <el-table-column label="课时" width="80" align="center">
           <template #default="{ row }">
-            {{ row.lesson_count }}
+            {{ row.lesson_count }} 节
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="170" align="center" />
+        <el-table-column prop="created_at" label="创建时间" width="180" align="center" />
         <el-table-column label="操作" width="280" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button
-              size="small"
-              type="primary"
-              link
-              @click="viewDetail(row)"
-            >
+            <el-button size="small" type="primary" link @click="viewDetail(row)">
               详情
             </el-button>
             <el-button
@@ -99,20 +92,13 @@
             >
               归档
             </el-button>
-            <el-button
-              v-if="row.status === 'archived'"
-              size="small"
-              type="danger"
-              link
-              disabled
-            >
+            <el-button v-if="row.status === 'archived'" size="small" type="info" link disabled>
               已归档
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <!-- Pagination -->
       <div class="pagination-wrapper">
         <el-pagination
           v-model:current-page="currentPage"
@@ -127,11 +113,10 @@
       </div>
     </el-card>
 
-    <!-- Create Project Dialog -->
     <el-dialog
       v-model="showCreateDialog"
       title="创建跨学科项目"
-      width="680px"
+      width="720px"
       :close-on-click-modal="false"
       @closed="resetForm"
     >
@@ -159,13 +144,12 @@
             placeholder="请选择涉及学科"
             style="width: 100%"
           >
-            <el-option label="语文" value="subject-00000000-0000-0000-0001" />
-            <el-option label="数学" value="subject-00000000-0000-0000-0002" />
-            <el-option label="英语" value="subject-00000000-0000-0000-0003" />
-            <el-option label="地理" value="subject-00000000-0000-0000-0004" />
-            <el-option label="生物" value="subject-00000000-0000-0000-0005" />
-            <el-option label="道法" value="subject-00000000-0000-0000-0006" />
-            <el-option label="信息科技" value="subject-00000000-0000-0000-0007" />
+            <el-option
+              v-for="subject in subjectOptions"
+              :key="subject.id"
+              :label="subject.name"
+              :value="subject.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="参与班级" prop="class_ids">
@@ -175,34 +159,38 @@
             placeholder="请选择参与班级"
             style="width: 100%"
           >
-            <el-option label="七年级(1)班" value="class-00000000-0000-0000-0001" />
+            <el-option
+              v-for="classItem in classOptions"
+              :key="classItem.id"
+              :label="classItem.name"
+              :value="classItem.id"
+            />
           </el-select>
         </el-form-item>
-        <el-form-item label="驱动性问题" prop="driving_question">
+        <el-form-item label="驱动问题" prop="driving_question">
           <el-input
             v-model="form.driving_question"
             type="textarea"
             :rows="3"
-            placeholder="请输入驱动性问题，如：如何设计一个既美观又稳固的桥梁模型？"
+            placeholder="例如：如何用跨学科证据解释校园池塘生态变化？"
             maxlength="500"
             show-word-limit
           />
         </el-form-item>
         <el-form-item label="课时数量" prop="lesson_count">
-          <el-input-number v-model="form.lesson_count" :min="1" :max="40" style="width: 160px" />
-          <span class="form-hint">节（1-40）</span>
+          <el-input-number v-model="form.lesson_count" :min="1" :max="40" style="width: 180px" />
+          <span class="form-hint">节</span>
         </el-form-item>
         <el-form-item label="教学目标" prop="objectives">
           <div class="objectives-list">
             <div
-              v-for="(obj, index) in form.objectives"
+              v-for="(_, index) in form.objectives"
               :key="index"
               class="objective-item"
             >
               <el-input
                 v-model="form.objectives[index]"
                 :placeholder="`目标 ${index + 1}`"
-                style="flex: 1"
               >
                 <template #append>
                   <el-button
@@ -235,18 +223,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { Plus, Delete } from '@element-plus/icons-vue'
-import { getProjects, createProject, activateProject, completeProject, archiveProject } from '@/api/projects'
-import type { ProjectItem, ProjectCreate } from '@/api/projects'
+import { Delete, MagicStick, Plus } from '@element-plus/icons-vue'
+import {
+  activateProject,
+  archiveProject,
+  completeProject,
+  createProject,
+  getProjects
+} from '@/api/projects'
+import type { ProjectCreate, ProjectItem } from '@/api/projects'
 import StatusTag from '@/components/StatusTag.vue'
 
 const router = useRouter()
 
-// Status configs
 const statusTypeMap: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
   draft: 'info',
   active: 'success',
@@ -261,7 +254,28 @@ const statusTextMap: Record<string, string> = {
   archived: '已归档'
 }
 
-// Data state
+const statusFilters = [
+  { label: '全部', value: '' },
+  { label: '草稿', value: 'draft' },
+  { label: '进行中', value: 'active' },
+  { label: '已完成', value: 'completed' },
+  { label: '已归档', value: 'archived' }
+]
+
+const subjectOptions = [
+  { id: 'subject-00000000-0000-0000-0001', name: '语文' },
+  { id: 'subject-00000000-0000-0000-0002', name: '数学' },
+  { id: 'subject-00000000-0000-0000-0003', name: '英语' },
+  { id: 'subject-00000000-0000-0000-0004', name: '地理' },
+  { id: 'subject-00000000-0000-0000-0005', name: '生物' },
+  { id: 'subject-00000000-0000-0000-0006', name: '道德与法治' },
+  { id: 'subject-00000000-0000-0000-0007', name: '信息科技' }
+]
+
+const classOptions = [
+  { id: 'class-00000000-0000-0000-0001', name: '七年级（1）班' }
+]
+
 const items = ref<ProjectItem[]>([])
 const loading = ref(false)
 const currentPage = ref(1)
@@ -269,7 +283,6 @@ const pageSize = ref(10)
 const total = ref(0)
 const filterStatus = ref('')
 
-// Create dialog
 const showCreateDialog = ref(false)
 const creating = ref(false)
 const formRef = ref<FormInstance>()
@@ -287,7 +300,7 @@ const form = reactive<ProjectCreate>({
 const formRules: FormRules = {
   name: [
     { required: true, message: '请输入项目名称', trigger: 'blur' },
-    { min: 2, max: 100, message: '项目名称长度在2到100个字符', trigger: 'blur' }
+    { min: 2, max: 100, message: '项目名称长度为 2-100 个字符', trigger: 'blur' }
   ],
   grade: [
     { required: true, message: '请选择年级', trigger: 'change' }
@@ -311,7 +324,7 @@ function resetForm() {
   form.driving_question = ''
   form.lesson_count = 4
   form.objectives = ['']
-  formRef.value?.resetFields()
+  formRef.value?.clearValidate()
 }
 
 async function loadData() {
@@ -347,6 +360,10 @@ function viewDetail(row: ProjectItem) {
   router.push(`/teacher/projects/${row.id}`)
 }
 
+function goToAILessonPlan() {
+  router.push('/teacher/ai/lesson-plan')
+}
+
 async function handleActivate(row: ProjectItem) {
   try {
     await activateProject(row.id)
@@ -376,7 +393,7 @@ async function handleComplete(row: ProjectItem) {
 
 async function handleArchive(row: ProjectItem) {
   try {
-    await ElMessageBox.confirm('归档后项目将变为只读，确定要归档吗？', '确认操作', {
+    await ElMessageBox.confirm('归档后项目将进入只读状态，确定要归档吗？', '确认操作', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
@@ -404,9 +421,20 @@ async function handleCreate() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
 
+  const objectives = form.objectives.map((item) => item.trim()).filter(Boolean)
+  if (objectives.length === 0) {
+    ElMessage.warning('请至少填写一个教学目标')
+    return
+  }
+
   creating.value = true
   try {
-    await createProject({ ...form })
+    await createProject({
+      ...form,
+      name: form.name.trim(),
+      driving_question: form.driving_question.trim(),
+      objectives
+    })
     ElMessage.success('项目创建成功')
     showCreateDialog.value = false
     loadData()
@@ -417,8 +445,7 @@ async function handleCreate() {
   }
 }
 
-// Initial load
-loadData()
+onMounted(loadData)
 </script>
 
 <style scoped>
@@ -434,6 +461,7 @@ loadData()
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
 }
 
 .card-title {
@@ -442,10 +470,33 @@ loadData()
   color: #303133;
 }
 
+.card-subtitle {
+  margin-top: 4px;
+  color: #7a8699;
+  font-size: 13px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .filter-bar {
   margin-bottom: 16px;
   display: flex;
   gap: 12px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.muted {
+  color: #909399;
 }
 
 .pagination-wrapper {
@@ -465,8 +516,6 @@ loadData()
 }
 
 .objective-item {
-  display: flex;
-  align-items: center;
   margin-bottom: 8px;
 }
 </style>

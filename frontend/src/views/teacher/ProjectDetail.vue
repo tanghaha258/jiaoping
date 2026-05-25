@@ -4,11 +4,13 @@
       <el-button :icon="ArrowLeft" @click="goBack">返回项目列表</el-button>
     </div>
 
-    <!-- Project Info Card -->
     <el-card class="info-card" v-loading="infoLoading">
       <template #header>
         <div class="card-header">
-          <span class="card-title">项目信息</span>
+          <div>
+            <div class="card-title">项目概览</div>
+            <div class="card-subtitle">项目承载教学目标，课时任务发布后才会进入学生端。</div>
+          </div>
           <div class="header-actions">
             <el-button
               v-if="project.status === 'draft'"
@@ -37,10 +39,10 @@
 
       <el-descriptions :column="2" border>
         <el-descriptions-item label="项目名称" :span="2">
-          {{ project.name }}
+          {{ project.name || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="年级">
-          {{ project.grade }}
+          {{ project.grade || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="状态">
           <StatusTag
@@ -49,69 +51,74 @@
             :text-map="statusTextMap"
           />
         </el-descriptions-item>
-        <el-descriptions-item label="驱动性问题" :span="2">
-          {{ project.driving_question }}
+        <el-descriptions-item label="驱动问题" :span="2">
+          {{ project.driving_question || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="涉及学科">
-          <el-tag
-            v-for="subject in project.subjects"
-            :key="subject.id"
-            size="small"
-            style="margin-right: 4px; margin-bottom: 2px"
-          >
-            {{ subject.name }}
-          </el-tag>
-          <span v-if="!project.subjects || project.subjects.length === 0">-</span>
+          <div class="tag-list">
+            <el-tag
+              v-for="subject in project.subjects"
+              :key="subject.id"
+              size="small"
+              effect="plain"
+            >
+              {{ subject.name }}
+            </el-tag>
+            <span v-if="!project.subjects || project.subjects.length === 0" class="muted">-</span>
+          </div>
         </el-descriptions-item>
         <el-descriptions-item label="课时数量">
-          {{ project.lesson_count }} 节
+          {{ project.lesson_count || 0 }} 节
         </el-descriptions-item>
         <el-descriptions-item label="参与班级">
-          <el-tag
-            v-for="cls in project.classes"
-            :key="cls.id"
-            size="small"
-            style="margin-right: 4px"
-          >
-            {{ cls.name }}
-          </el-tag>
-          <span v-if="!project.classes || project.classes.length === 0">-</span>
+          <div class="tag-list">
+            <el-tag
+              v-for="cls in project.classes"
+              :key="cls.id"
+              size="small"
+              effect="plain"
+            >
+              {{ cls.name }}
+            </el-tag>
+            <span v-if="!project.classes || project.classes.length === 0" class="muted">-</span>
+          </div>
         </el-descriptions-item>
         <el-descriptions-item label="创建人">
-          {{ project.owner_name }}
+          {{ project.owner_name || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="教学目标" :span="2">
           <ul v-if="project.objectives && project.objectives.length > 0" class="objectives-list">
             <li v-for="(obj, idx) in project.objectives" :key="idx">{{ obj }}</li>
           </ul>
-          <span v-else>-</span>
+          <span v-else class="muted">-</span>
         </el-descriptions-item>
         <el-descriptions-item label="创建时间">
-          {{ project.created_at }}
+          {{ project.created_at || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="更新时间">
-          {{ project.updated_at }}
+          {{ project.updated_at || '-' }}
         </el-descriptions-item>
       </el-descriptions>
     </el-card>
 
-    <!-- Tasks Section -->
     <el-card class="tasks-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">课时安排</span>
+          <div>
+            <div class="card-title">课时任务</div>
+            <div class="card-subtitle">草稿任务仅教师可见，发布后学生才可以查看和提交。</div>
+          </div>
           <div class="header-actions">
             <el-button
               v-if="project.status === 'active'"
-              type="primary"
               :icon="MagicStick"
               @click="goToAI"
             >
-              AI 备课
+              AI 继续备课
             </el-button>
             <el-button
               v-if="project.status === 'active'"
-              type="success"
+              type="primary"
               :icon="Plus"
               @click="openCreateTask"
             >
@@ -121,20 +128,28 @@
         </div>
       </template>
 
-      <el-table :data="tasks" v-loading="tasksLoading" border stripe>
-        <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="title" label="课时标题" min-width="180" show-overflow-tooltip />
-        <el-table-column label="任务类型" width="110" align="center">
+      <el-table
+        :data="tasks"
+        v-loading="tasksLoading"
+        border
+        stripe
+        empty-text="暂无课时任务，请添加课时或使用 AI 继续备课"
+      >
+        <el-table-column type="index" label="序号" width="70" align="center" />
+        <el-table-column prop="title" label="课时标题" min-width="200" show-overflow-tooltip />
+        <el-table-column label="任务类型" width="130" align="center">
           <template #default="{ row }">
-            <el-tag size="small" type="info">{{ taskTypeMap[row.task_type] || row.task_type }}</el-tag>
+            <el-tag size="small" type="info" effect="plain">
+              {{ taskTypeMap[row.task_type] || row.task_type }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="提交方式" width="110" align="center">
+        <el-table-column label="提交方式" width="120" align="center">
           <template #default="{ row }">
             {{ submitTypeMap[row.submit_type] || row.submit_type }}
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100" align="center">
+        <el-table-column label="状态" width="110" align="center">
           <template #default="{ row }">
             <StatusTag
               :status="row.status"
@@ -143,19 +158,19 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="截止日期" width="130" align="center">
+        <el-table-column label="截止日期" width="170" align="center">
           <template #default="{ row }">
             {{ row.due_at || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="240" align="center" fixed="right">
+        <el-table-column label="提交数" width="90" align="center">
           <template #default="{ row }">
-            <el-button
-              size="small"
-              type="primary"
-              link
-              @click="openTaskDetail(row)"
-            >
+            {{ row.submission_count || 0 }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="280" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" link @click="openTaskDetail(row)">
               详情
             </el-button>
             <el-button
@@ -185,27 +200,18 @@
             >
               关闭
             </el-button>
-            <el-button
-              size="small"
-              type="primary"
-              link
-              @click="viewSubmissions(row)"
-            >
+            <el-button size="small" type="primary" link @click="viewSubmissions(row)">
               查看提交
             </el-button>
           </template>
         </el-table-column>
       </el-table>
-      <div v-if="tasks.length === 0 && !tasksLoading" class="empty-hint">
-        暂无课时安排，请添加课时或使用 AI 备课功能
-      </div>
     </el-card>
 
-    <!-- Add Task Dialog -->
     <el-dialog
       v-model="showTaskDialog"
       :title="editingTaskId ? '编辑课时任务' : '添加课时任务'"
-      width="560px"
+      width="620px"
       :close-on-click-modal="false"
       @closed="resetTaskForm"
     >
@@ -219,30 +225,34 @@
         <el-form-item label="课时标题" prop="title">
           <el-input v-model="taskForm.title" placeholder="请输入课时标题" maxlength="100" show-word-limit />
         </el-form-item>
-        <el-form-item label="任务描述" prop="description">
+        <el-form-item label="任务说明" prop="description">
           <el-input
             v-model="taskForm.description"
             type="textarea"
-            :rows="3"
-            placeholder="请输入任务描述"
-            maxlength="500"
+            :rows="4"
+            placeholder="请输入任务说明、活动要求和成果形式"
+            maxlength="800"
             show-word-limit
           />
         </el-form-item>
         <el-form-item label="任务类型" prop="task_type">
           <el-select v-model="taskForm.task_type" placeholder="请选择任务类型" style="width: 100%">
-            <el-option label="阅读与探究" value="reading" />
-            <el-option label="实验与实践" value="experiment" />
-            <el-option label="讨论与合作" value="discussion" />
-            <el-option label="创作与展示" value="creation" />
-            <el-option label="反思与总结" value="reflection" />
+            <el-option
+              v-for="option in taskTypeOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="提交方式" prop="submit_type">
           <el-select v-model="taskForm.submit_type" placeholder="请选择提交方式" style="width: 100%">
-            <el-option label="文本" value="text" />
-            <el-option label="文件上传" value="file" />
-            <el-option label="链接" value="link" />
+            <el-option
+              v-for="option in submitTypeOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="截止日期" prop="due_at">
@@ -263,7 +273,7 @@
       </template>
     </el-dialog>
 
-    <el-drawer v-model="taskDetailVisible" title="课时详情" size="520px">
+    <el-drawer v-model="taskDetailVisible" title="课时详情" size="540px">
       <template v-if="selectedTask">
         <div class="task-detail-head">
           <div>
@@ -277,12 +287,27 @@
           />
         </div>
         <el-descriptions :column="1" border>
-          <el-descriptions-item label="任务说明">{{ selectedTask.description }}</el-descriptions-item>
-          <el-descriptions-item label="提交方式">{{ submitTypeMap[selectedTask.submit_type] || selectedTask.submit_type }}</el-descriptions-item>
-          <el-descriptions-item label="截止日期">{{ selectedTask.due_at || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="提交数量">{{ selectedTask.submission_count }}</el-descriptions-item>
-          <el-descriptions-item label="评价量规">{{ selectedTask.rubric_name || '未绑定' }}</el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ selectedTask.created_at }}</el-descriptions-item>
+          <el-descriptions-item label="任务说明">
+            {{ selectedTask.description || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="提交方式">
+            {{ submitTypeMap[selectedTask.submit_type] || selectedTask.submit_type }}
+          </el-descriptions-item>
+          <el-descriptions-item label="截止日期">
+            {{ selectedTask.due_at || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="提交数量">
+            {{ selectedTask.submission_count || 0 }}
+          </el-descriptions-item>
+          <el-descriptions-item label="评价量规">
+            {{ selectedTask.rubric_name || '未绑定' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间">
+            {{ selectedTask.created_at }}
+          </el-descriptions-item>
+          <el-descriptions-item label="更新时间">
+            {{ selectedTask.updated_at }}
+          </el-descriptions-item>
         </el-descriptions>
       </template>
     </el-drawer>
@@ -290,20 +315,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { ArrowLeft, Plus, MagicStick } from '@element-plus/icons-vue'
-import { getProject, activateProject, completeProject, archiveProject } from '@/api/projects'
+import { ArrowLeft, MagicStick, Plus } from '@element-plus/icons-vue'
+import { activateProject, archiveProject, completeProject, getProject } from '@/api/projects'
 import type { ProjectItem } from '@/api/projects'
-import { getTasks, createTask, updateTask, publishTask, closeTask } from '@/api/tasks'
-import type { TaskItem, TaskCreate } from '@/api/tasks'
+import { closeTask, createTask, getTasks, publishTask, updateTask } from '@/api/tasks'
+import type { TaskCreate, TaskItem } from '@/api/tasks'
 import StatusTag from '@/components/StatusTag.vue'
 
 const route = useRoute()
 const router = useRouter()
-
 const projectId = route.params.id as string
 
 const statusTypeMap: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
@@ -327,24 +351,38 @@ const taskStatusTypeMap: Record<string, '' | 'success' | 'warning' | 'info' | 'd
 }
 
 const taskStatusTextMap: Record<string, string> = {
-  draft: '未发布',
+  draft: '草稿',
   published: '已发布',
   closed: '已关闭'
 }
 
 const taskTypeMap: Record<string, string> = {
-  reading: '阅读探究',
-  experiment: '实验实践',
-  discussion: '讨论合作',
-  creation: '创作展示',
-  reflection: '反思总结'
+  individual: '个人任务',
+  group: '小组协作',
+  classroom: '课堂活动',
+  homework: '课后作业'
 }
 
 const submitTypeMap: Record<string, string> = {
   text: '文本',
   file: '文件',
-  link: '链接'
+  link: '链接',
+  mixed: '综合材料'
 }
+
+const taskTypeOptions = [
+  { label: '个人任务', value: 'individual' },
+  { label: '小组协作', value: 'group' },
+  { label: '课堂活动', value: 'classroom' },
+  { label: '课后作业', value: 'homework' }
+]
+
+const submitTypeOptions = [
+  { label: '文本', value: 'text' },
+  { label: '文件', value: 'file' },
+  { label: '链接', value: 'link' },
+  { label: '综合材料', value: 'mixed' }
+]
 
 const project = ref<ProjectItem>({
   id: '',
@@ -378,7 +416,8 @@ const taskForm = reactive<TaskCreate>({
   description: '',
   task_type: '',
   submit_type: 'text',
-  due_at: null
+  due_at: null,
+  rubric_id: null
 })
 
 const taskFormRules: FormRules = {
@@ -386,7 +425,7 @@ const taskFormRules: FormRules = {
     { required: true, message: '请输入课时标题', trigger: 'blur' }
   ],
   description: [
-    { required: true, message: '请输入任务描述', trigger: 'blur' }
+    { required: true, message: '请输入任务说明', trigger: 'blur' }
   ],
   task_type: [
     { required: true, message: '请选择任务类型', trigger: 'change' }
@@ -410,7 +449,7 @@ async function loadProject() {
     const res = await getProject(projectId)
     project.value = res.data
   } catch (e: any) {
-    ElMessage.error(e?.message || '项目信息加载失败')
+    ElMessage.error(e?.message || '项目详情加载失败')
   } finally {
     infoLoading.value = false
   }
@@ -423,7 +462,7 @@ async function loadTasks() {
     tasks.value = res.data.items || []
   } catch (e: any) {
     tasks.value = []
-    ElMessage.error(e?.message || '课时数据加载失败')
+    ElMessage.error(e?.message || '课时任务加载失败')
   } finally {
     tasksLoading.value = false
   }
@@ -456,7 +495,7 @@ async function handleComplete() {
 
 async function handleArchive() {
   try {
-    await ElMessageBox.confirm('归档后项目将变为只读，确定要归档吗？', '确认操作', {
+    await ElMessageBox.confirm('归档后项目将进入只读状态，确定要归档吗？', '确认操作', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
@@ -471,21 +510,31 @@ async function handleArchive() {
 
 async function handlePublishTask(row: TaskItem) {
   try {
+    await ElMessageBox.confirm('发布后学生端将可见并可以提交，确定发布吗？', '发布课时任务', {
+      confirmButtonText: '发布',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
     await publishTask(row.id)
     ElMessage.success('课时已发布')
     loadTasks()
   } catch (e: any) {
-    ElMessage.error(e?.message || '发布失败')
+    if (e !== 'cancel') ElMessage.error(e?.message || '发布失败')
   }
 }
 
 async function handleCloseTask(row: TaskItem) {
   try {
+    await ElMessageBox.confirm('关闭后学生不能继续提交，确定关闭吗？', '关闭课时任务', {
+      confirmButtonText: '关闭',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
     await closeTask(row.id)
     ElMessage.success('课时已关闭')
     loadTasks()
   } catch (e: any) {
-    ElMessage.error(e?.message || '关闭失败')
+    if (e !== 'cancel') ElMessage.error(e?.message || '关闭失败')
   }
 }
 
@@ -500,7 +549,8 @@ function resetTaskForm() {
   taskForm.task_type = ''
   taskForm.submit_type = 'text'
   taskForm.due_at = null
-  taskFormRef.value?.resetFields()
+  taskForm.rubric_id = null
+  taskFormRef.value?.clearValidate()
 }
 
 function openCreateTask() {
@@ -531,17 +581,22 @@ async function handleSaveTask() {
 
   creatingTask.value = true
   try {
+    const payload = {
+      ...taskForm,
+      title: taskForm.title.trim(),
+      description: taskForm.description.trim()
+    }
     if (editingTaskId.value) {
-      await updateTask(editingTaskId.value, { ...taskForm })
+      await updateTask(editingTaskId.value, payload)
       ElMessage.success('课时已更新')
     } else {
-      await createTask(projectId, { ...taskForm })
+      await createTask(projectId, payload)
       ElMessage.success('课时添加成功')
     }
     showTaskDialog.value = false
     loadTasks()
   } catch (e: any) {
-    ElMessage.error(e?.message || '添加失败')
+    ElMessage.error(e?.message || '保存失败')
   } finally {
     creatingTask.value = false
   }
@@ -575,6 +630,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
 }
 
 .card-title {
@@ -583,9 +639,26 @@ onMounted(() => {
   color: #303133;
 }
 
+.card-subtitle {
+  margin-top: 4px;
+  color: #7a8699;
+  font-size: 13px;
+}
+
 .header-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.muted {
+  color: #909399;
 }
 
 .objectives-list {
@@ -597,10 +670,23 @@ onMounted(() => {
   line-height: 1.8;
 }
 
-.empty-hint {
-  text-align: center;
-  padding: 40px 0;
-  color: #909399;
-  font-size: 14px;
+.task-detail-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.task-detail-head h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  color: #303133;
+}
+
+.task-detail-head p {
+  margin: 0;
+  color: #7a8699;
+  font-size: 13px;
 }
 </style>

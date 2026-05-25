@@ -19,7 +19,9 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - [x] Implement admin AI agent CRUD UI.
 - [x] Implement teacher resource CRUD UI.
 - [x] Clean project/task hierarchy and demo fallbacks.
-- [ ] Verify, commit, and push.
+- [x] Verify backend and frontend build.
+- [x] Browser-smoke teacher login and key teacher pages.
+- [ ] Commit and push.
 
 ## Decisions
 
@@ -40,6 +42,10 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-25: Rebuilt teacher resource center as real CRUD UI with hierarchy tree, filters, list, detail drawer, create/edit dialog, delete confirmation, and reload behavior.
 - 2026-05-25: Removed normal-path demo fallbacks from project list/detail and task list; empty states now show explicitly.
 - 2026-05-25: Added task detail drawer and edit dialog in project detail.
-- 2026-05-25: Verified backend with `python -m pytest backend/tests -q` (`3 passed`) and `python -m compileall backend\app`.
+- 2026-05-25: Rebuilt project list and project detail as clean Chinese operational pages with explicit state actions.
+- 2026-05-25: Aligned task type selections with backend enums (`individual`, `group`, `classroom`, `homework`) so manual task CRUD uses real API values.
+- 2026-05-25: Added operational smoke tests for resource metadata CRUD, lesson-plan adoption, duplicate adoption blocking, and student-side draft-task invisibility.
+- 2026-05-25: Verified backend with `python -m pytest backend/tests -q` (`5 passed`) and `python -m compileall backend\app`.
 - 2026-05-25: Verified frontend with `npm run build`.
 - 2026-05-25: Smoke-tested API login, lesson-plan draft generation, AI progress retrieval, and resource create/update/delete through FastAPI `TestClient`.
+- 2026-05-25: Browser-smoked teacher UI on `http://127.0.0.1:3000`: login, project list, resource center, and AI lesson-plan workflow page render with normal Chinese text and expected workflow content.
