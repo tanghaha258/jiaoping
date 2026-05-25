@@ -1,0 +1,32 @@
+[project]
+name = "zhikuaxueping-backend"
+version = "0.1.0"
+description = "智跨学评 - AI-powered junior high school interdisciplinary teaching-assessment integration platform"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "sqlalchemy[asyncio]>=2.0.29",
+    "aiosqlite>=0.20.0",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.1",
+    "pydantic>=2.6.4",
+    "pydantic-settings>=2.2.1",
+    "pyjwt>=2.8.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.9",
+    "python-dotenv>=1.0.1",
+    "pytest>=8.2.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+packages = ["app", "app.api", "app.api.v1", "app.api.routers", "app.core", "app.db", "app.models", "app.repositories", "app.schemas", "app.services", "app.services.providers"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
