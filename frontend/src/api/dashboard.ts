@@ -26,8 +26,36 @@ export interface ProjectTrends {
   by_status: StatusBreakdown[]
 }
 
+export type TrialReadinessStatus = 'ready' | 'action_required'
+export type TrialReadinessItemStatus = 'ok' | 'warning' | 'error'
+
+export interface TrialReadinessItem {
+  key: string
+  label: string
+  status: TrialReadinessItemStatus
+  description: string
+  metric: string
+  action: string
+  route: string
+}
+
+export interface TrialReadiness {
+  status: TrialReadinessStatus
+  checked_at: string
+  summary: {
+    ok: number
+    warning: number
+    error: number
+  }
+  items: TrialReadinessItem[]
+}
+
 export function getDashboardOverview(): Promise<ApiResponse<DashboardOverview>> {
   return request.get('/dashboard/overview')
+}
+
+export function getTrialReadiness(): Promise<ApiResponse<TrialReadiness>> {
+  return request.get('/dashboard/trial-readiness')
 }
 
 export function getProjectTrends(): Promise<ApiResponse<ProjectTrends>> {

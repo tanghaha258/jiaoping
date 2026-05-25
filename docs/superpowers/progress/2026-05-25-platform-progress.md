@@ -56,6 +56,11 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Added template, export, dry-run import, and committed import APIs.
   - [x] Added initial-password handout list for newly created accounts only.
   - [x] Added user-management UI controls for template/export/import.
+- [x] Phase 8: Add trial readiness checklist and SQLite backup/restore.
+- [x] Added admin-role `/api/v1/dashboard/trial-readiness` contract.
+  - [x] Added readiness items for service, organization data, users, AI contract, workflow, student tasks, resources, and backup path.
+  - [x] Added SQLite backup and guarded restore scripts.
+  - [x] Added admin dashboard readiness panel with quick actions.
 
 ## Decisions
 
@@ -66,6 +71,8 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - Phase 2 prioritizes the post-adoption teaching-assessment loop before expanding new AI scenarios.
 - Organization data import is additive and non-destructive: existing region/school/class/subject data is skipped, not overwritten or deleted.
 - User account import is additive and non-destructive: existing usernames are skipped, existing passwords are never exported, and initial passwords are only returned for accounts created by the current import.
+- Trial readiness is computed from live operational data and shown as a checklist; blocking setup gaps are errors, while project/task/resource gaps are warnings that guide trial preparation.
+- Local SQLite backup uses timestamped file copies, and restore creates a pre-restore safety backup by default.
 
 ## Completed Work
 
@@ -126,3 +133,10 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-25: Added user account package tests for template, password-redacted export, dry-run import, committed import, student class binding, repeated import skip, login with imported password, and non-admin blocking.
 - 2026-05-25: Verified Phase 7 backend with `python -m pytest backend/tests/test_user_account_portability.py -q` (`3 passed`).
 - 2026-05-25: Added user-management controls for account template download, account export, dry-run import, committed import, import summary, and newly created account password handout list; verified with `npm run build`.
+- 2026-05-25: Started Phase 8 trial readiness and backup/restore hardening.
+- 2026-05-25: Added trial readiness backend tests for admin access, role blocking, response shape, and backup/restore artifacts.
+- 2026-05-25: Implemented admin-role `/api/v1/dashboard/trial-readiness` with live checklist aggregation.
+- 2026-05-25: Added `scripts/backup-sqlite.ps1`, `scripts/restore-sqlite.ps1`, and documented SQLite Backup / SQLite Restore in deployment docs.
+- 2026-05-25: Rebuilt admin dashboard with clean Chinese copy and a trial readiness checklist panel; verified with `npm run build`.
+- 2026-05-25: Verified Phase 8 with `python -m pytest backend/tests/test_trial_readiness.py -q` (`4 passed`) and `scripts/check-release.ps1` (`26 passed`, backend compile, frontend build).
+- 2026-05-25: Edge-smoked `/admin` as system admin; readiness API returned `ready` with 8 items and the page rendered the checklist with no empty-state fallback.

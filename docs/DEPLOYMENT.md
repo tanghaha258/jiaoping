@@ -26,11 +26,11 @@
    powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1
    ```
 
-4. 打开前端：
+4. 打开运行地址：
 
    - Teacher/Admin UI: `http://127.0.0.1:3000`
    - API health: `http://127.0.0.1:8000/api/v1/health`
-   - Readiness: `http://127.0.0.1:8000/api/v1/health/ready`
+   - API readiness: `http://127.0.0.1:8000/api/v1/health/ready`
 
 默认试运行账号：
 
@@ -44,7 +44,7 @@
 
 ## Docker Trial
 
-Docker 试运行使用已有 `deploy/docker-compose.yml`，包含 PostgreSQL、后端 API 和 Nginx 静态站点。
+Docker 试运行使用已有 `deploy/docker-compose.yml`，包含 PostgreSQL、后端 API 和前端静态站点。
 
 1. 构建前端静态资源：
 
@@ -73,7 +73,36 @@ Docker 试运行使用已有 `deploy/docker-compose.yml`，包含 PostgreSQL、�
    - API health: `http://127.0.0.1/api/v1/health`
    - API readiness: `http://127.0.0.1/api/v1/health/ready`
 
-正式部署时请把 `deploy/docker-compose.yml` 中的数据库密码、`JWT_SECRET` 和域名配置替换成真实值。
+正式部署时请把数据库密码、`JWT_SECRET`、CORS 域名和对外访问域名替换成真实值。
+
+## SQLite Backup
+
+本地 SQLite 试运行可以从项目根目录创建带时间戳的备份：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/backup-sqlite.ps1
+```
+
+可选参数：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/backup-sqlite.ps1 `
+  -DatabasePath "backend/app.db" `
+  -BackupDir "backups"
+```
+
+脚本会优先读取 `backend/.env` 中的 `DATABASE_URL`。如果没有配置 SQLite 路径，则默认备份 `backend/app.db`。
+
+## SQLite Restore
+
+恢复 SQLite 数据库前，请先停止后端服务。然后从指定备份恢复：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/restore-sqlite.ps1 `
+  -BackupPath "backups/app-20260525-120000.db"
+```
+
+默认情况下，恢复脚本会先在当前数据库旁边创建 `app.pre-restore-YYYYMMDD-HHMMSS.db` 安全备份。只有在已经单独确认有可用备份时，才使用 `-SkipSafetyBackup`。
 
 ## Smoke Test
 

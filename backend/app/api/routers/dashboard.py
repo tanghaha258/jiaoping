@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user, get_db
+from app.core.deps import get_current_user, get_db, require_roles
 from app.core.response import success_response
 from app.models.user import User
 from app.services.dashboard_service import DashboardService
@@ -78,6 +78,16 @@ async def get_ai_usage(
         owner_id=owner_id,
     )
     return success_response(data=data, message="获取AI使用数据成功")
+
+
+@router.get("/trial-readiness")
+async def get_trial_readiness(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("system_admin", "school_admin", "region_admin")),
+):
+    """Get the operational checklist for local trial readiness."""
+    data = await DashboardService.get_trial_readiness(db=db)
+    return success_response(data=data, message="试运行检查完成")
 
 
 @router.get("/project-trends")
