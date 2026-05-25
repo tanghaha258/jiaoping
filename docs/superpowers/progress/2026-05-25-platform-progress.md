@@ -21,7 +21,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - [x] Clean project/task hierarchy and demo fallbacks.
 - [x] Verify backend and frontend build.
 - [x] Browser-smoke teacher login and key teacher pages.
-- [ ] Commit and push.
+- [x] Commit and push.
 
 ## Decisions
 
@@ -49,3 +49,4 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-25: Verified frontend with `npm run build`.
 - 2026-05-25: Smoke-tested API login, lesson-plan draft generation, AI progress retrieval, and resource create/update/delete through FastAPI `TestClient`.
 - 2026-05-25: Browser-smoked teacher UI on `http://127.0.0.1:3000`: login, project list, resource center, and AI lesson-plan workflow page render with normal Chinese text and expected workflow content.
+- 2026-05-25: Committed and pushed branch `codex/agent-contract-crud` to `https://github.com/tanghaha258/jiaoping.git`.

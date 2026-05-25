@@ -75,4 +75,4 @@
 - [x] Step 3: Smoke test login, AI draft, AI progress, resource CRUD.
 - [x] Step 4: Update progress document with verified results.
 - [x] Step 5: Add remote `https://github.com/tanghaha258/jiaoping.git` if missing.
-- [ ] Step 6: Commit and push branch `codex/agent-contract-crud`.
+- [x] Step 6: Commit and push branch `codex/agent-contract-crud`.
