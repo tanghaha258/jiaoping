@@ -89,6 +89,44 @@ export interface AuditLogItem {
   created_at: string
 }
 
+export interface OrgRegionPackageItem {
+  name: string
+  code: string
+}
+
+export interface OrgSchoolPackageItem {
+  region_code: string
+  name: string
+  code: string
+  status: string
+}
+
+export interface OrgClassPackageItem {
+  school_code: string
+  grade: string
+  name: string
+  academic_year: string
+}
+
+export interface OrgSubjectPackageItem {
+  name: string
+  stage: string
+}
+
+export interface OrgDataPackage {
+  regions: OrgRegionPackageItem[]
+  schools: OrgSchoolPackageItem[]
+  classes: OrgClassPackageItem[]
+  subjects: OrgSubjectPackageItem[]
+}
+
+export interface OrgDataImportSummary {
+  dry_run: boolean
+  created: Record<'regions' | 'schools' | 'classes' | 'subjects', number>
+  skipped: Record<'regions' | 'schools' | 'classes' | 'subjects', number>
+  errors: string[]
+}
+
 export function getAdminUsers(params?: {
   page?: number
   page_size?: number
@@ -211,6 +249,21 @@ export function updateSubject(id: string, data: Partial<SubjectItem>): Promise<A
 
 export function deleteSubject(id: string): Promise<ApiResponse<SubjectItem>> {
   return request.delete(`/org/subjects/${id}`)
+}
+
+export function getOrgDataTemplate(): Promise<ApiResponse<OrgDataPackage>> {
+  return request.get('/org/data/template')
+}
+
+export function exportOrgDataPackage(): Promise<ApiResponse<OrgDataPackage>> {
+  return request.get('/org/data/export')
+}
+
+export function importOrgDataPackage(data: {
+  dry_run: boolean
+  package: OrgDataPackage
+}): Promise<ApiResponse<OrgDataImportSummary>> {
+  return request.post('/org/data/import', data)
 }
 
 export function getSystemSettings(params?: {

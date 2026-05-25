@@ -4,16 +4,27 @@
       <div>
         <p class="eyebrow">基础数据</p>
         <h1>学校管理</h1>
-        <p>维护区域、学校、班级和学科，支撑项目、任务和用户分配的真实运转。</p>
+        <p>维护区域、学校、班级和学科，并支持试运行前批量导入基础数据包。</p>
       </div>
-      <el-button :icon="Refresh" :loading="loading" @click="reloadCurrent">刷新</el-button>
+      <div class="header-actions">
+        <el-button :icon="Refresh" :loading="loading" @click="reloadCurrent">刷新</el-button>
+        <el-button @click="downloadTemplate">下载模板</el-button>
+        <el-button @click="downloadExport">导出数据</el-button>
+        <el-button type="primary" @click="openImportDialog">导入数据包</el-button>
+      </div>
     </section>
 
     <el-card shadow="never" class="page-card">
       <el-tabs v-model="activeTab" @tab-change="reloadCurrent">
         <el-tab-pane label="学校" name="schools">
           <div class="toolbar">
-            <el-input v-model="schoolKeyword" clearable placeholder="搜索学校名称或代码" @keyup.enter="loadSchools" @clear="loadSchools" />
+            <el-input
+              v-model="schoolKeyword"
+              clearable
+              placeholder="搜索学校名称或代码"
+              @keyup.enter="loadSchools"
+              @clear="loadSchools"
+            />
             <el-button @click="loadSchools">查询</el-button>
             <el-button type="primary" :icon="Plus" @click="openSchool()">新增学校</el-button>
           </div>
@@ -23,7 +34,9 @@
             <el-table-column prop="region_name" label="区域" min-width="150" />
             <el-table-column label="状态" width="100" align="center">
               <template #default="{ row }">
-                <el-tag :type="row.status === 'active' ? 'success' : 'info'">{{ row.status === 'active' ? '启用' : '停用' }}</el-tag>
+                <el-tag :type="row.status === 'active' ? 'success' : 'info'">
+                  {{ row.status === 'active' ? '启用' : '停用' }}
+                </el-tag>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="150" fixed="right" align="center">
@@ -40,7 +53,13 @@
             <el-select v-model="classSchoolId" clearable filterable placeholder="学校" style="width: 220px" @change="loadClasses">
               <el-option v-for="item in schools" :key="item.id" :label="item.name" :value="item.id" />
             </el-select>
-            <el-input v-model="classKeyword" clearable placeholder="搜索班级或学年" @keyup.enter="loadClasses" @clear="loadClasses" />
+            <el-input
+              v-model="classKeyword"
+              clearable
+              placeholder="搜索班级或学年"
+              @keyup.enter="loadClasses"
+              @clear="loadClasses"
+            />
             <el-button @click="loadClasses">查询</el-button>
             <el-button type="primary" :icon="Plus" @click="openClass()">新增班级</el-button>
           </div>
@@ -78,7 +97,13 @@
 
         <el-tab-pane label="区域" name="regions">
           <div class="toolbar">
-            <el-input v-model="regionKeyword" clearable placeholder="搜索区域名称或代码" @keyup.enter="loadRegions" @clear="loadRegions" />
+            <el-input
+              v-model="regionKeyword"
+              clearable
+              placeholder="搜索区域名称或代码"
+              @keyup.enter="loadRegions"
+              @clear="loadRegions"
+            />
             <el-button @click="loadRegions">查询</el-button>
             <el-button type="primary" :icon="Plus" @click="openRegion()">新增区域</el-button>
           </div>
@@ -156,6 +181,37 @@
         <el-button type="primary" :loading="saving" @click="saveRegion">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="importDialog" title="导入基础数据包" width="720px" :close-on-click-modal="false">
+      <el-alert
+        title="导入是增量写入：已有代码或名称的数据会跳过，不会删除现有数据。建议先校验，再确认导入。"
+        type="info"
+        show-icon
+        :closable="false"
+      />
+      <el-input
+        v-model="importText"
+        type="textarea"
+        :rows="14"
+        class="import-textarea"
+        placeholder="粘贴 JSON 数据包，或点击“下载模板”后按模板填写"
+      />
+      <div v-if="importSummary" class="summary">
+        <strong>{{ importSummary.dry_run ? '校验结果' : '导入结果' }}</strong>
+        <div class="summary-grid">
+          <span>区域：新增 {{ importSummary.created.regions }}，跳过 {{ importSummary.skipped.regions }}</span>
+          <span>学校：新增 {{ importSummary.created.schools }}，跳过 {{ importSummary.skipped.schools }}</span>
+          <span>班级：新增 {{ importSummary.created.classes }}，跳过 {{ importSummary.skipped.classes }}</span>
+          <span>学科：新增 {{ importSummary.created.subjects }}，跳过 {{ importSummary.skipped.subjects }}</span>
+        </div>
+        <el-alert v-if="importSummary.errors.length" :title="importSummary.errors.join('；')" type="error" show-icon :closable="false" />
+      </div>
+      <template #footer>
+        <el-button @click="importDialog = false">取消</el-button>
+        <el-button :loading="importing" @click="submitImport(true)">仅校验</el-button>
+        <el-button type="primary" :loading="importing" @click="submitImport(false)">确认导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -172,20 +228,31 @@ import {
   deleteRegion,
   deleteSchool,
   deleteSubject,
+  exportOrgDataPackage,
   getClasses,
+  getOrgDataTemplate,
   getRegions,
   getSchools,
   getSubjects,
+  importOrgDataPackage,
   updateClass,
   updateRegion,
   updateSchool,
   updateSubject
 } from '@/api/admin'
-import type { ClassItem, RegionItem, SchoolItem, SubjectItem } from '@/api/admin'
+import type {
+  ClassItem,
+  OrgDataImportSummary,
+  OrgDataPackage,
+  RegionItem,
+  SchoolItem,
+  SubjectItem
+} from '@/api/admin'
 
 const activeTab = ref('schools')
 const loading = ref(false)
 const saving = ref(false)
+const importing = ref(false)
 const schools = ref<SchoolItem[]>([])
 const classes = ref<ClassItem[]>([])
 const subjects = ref<SubjectItem[]>([])
@@ -201,6 +268,9 @@ const schoolDialog = ref(false)
 const classDialog = ref(false)
 const subjectDialog = ref(false)
 const regionDialog = ref(false)
+const importDialog = ref(false)
+const importText = ref('')
+const importSummary = ref<OrgDataImportSummary | null>(null)
 
 const schoolForm = reactive({ id: '', region_id: '', name: '', code: '', status: 'active' })
 const classForm = reactive({ id: '', school_id: '', grade: '', name: '', academic_year: '2026-2027' })
@@ -358,7 +428,7 @@ async function saveRegion() {
 }
 
 async function confirmRemove(name: string) {
-  await ElMessageBox.confirm(`确认删除「${name}」？`, '删除确认', { type: 'warning' })
+  await ElMessageBox.confirm(`确认删除“${name}”？`, '删除确认', { type: 'warning' })
 }
 
 async function removeSchool(row: SchoolItem) {
@@ -387,6 +457,58 @@ async function removeRegion(row: RegionItem) {
   await deleteRegion(row.id)
   ElMessage.success('区域已删除')
   await loadRegions()
+}
+
+function downloadJson(filename: string, payload: unknown) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+async function downloadTemplate() {
+  const res = await getOrgDataTemplate()
+  downloadJson('org-data-template.json', res.data)
+}
+
+async function downloadExport() {
+  const res = await exportOrgDataPackage()
+  downloadJson(`org-data-export-${new Date().toISOString().slice(0, 10)}.json`, res.data)
+}
+
+function openImportDialog() {
+  importText.value = ''
+  importSummary.value = null
+  importDialog.value = true
+}
+
+function parseImportPackage(): OrgDataPackage | null {
+  try {
+    return JSON.parse(importText.value) as OrgDataPackage
+  } catch {
+    ElMessage.error('JSON 格式不正确')
+    return null
+  }
+}
+
+async function submitImport(dryRun: boolean) {
+  const parsed = parseImportPackage()
+  if (!parsed) return
+
+  importing.value = true
+  try {
+    const res = await importOrgDataPackage({ dry_run: dryRun, package: parsed })
+    importSummary.value = res.data
+    if (!dryRun && res.data.errors.length === 0) {
+      ElMessage.success('基础数据已导入')
+      await Promise.all([loadRegions(), loadSchools(), loadClasses(), loadSubjects()])
+    }
+  } finally {
+    importing.value = false
+  }
 }
 
 onMounted(async () => {
@@ -432,10 +554,14 @@ onMounted(async () => {
   font-weight: 700;
 }
 
+.header-actions,
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.toolbar {
   margin-bottom: 12px;
 }
 
@@ -443,10 +569,31 @@ onMounted(async () => {
   width: 240px;
 }
 
+.import-textarea {
+  margin-top: 14px;
+}
+
+.summary {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  color: #475569;
+}
+
 @media (max-width: 760px) {
   .header-band {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

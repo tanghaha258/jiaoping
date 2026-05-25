@@ -1,6 +1,7 @@
 """Organization base-data services."""
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any, Optional
 
 from sqlalchemy import func, or_, select
@@ -16,6 +17,8 @@ from app.models.user import User
 from app.schemas.org import (
     ClassCreate,
     ClassUpdate,
+    OrgDataImportRequest,
+    OrgDataPackage,
     RegionCreate,
     RegionUpdate,
     SchoolCreate,
@@ -245,6 +248,166 @@ class OrgService:
         await db.refresh(subject)
         return subject
 
+    @staticmethod
+    def template_data_package() -> dict:
+        return {
+            "regions": [{"name": "钦州试点区", "code": "qz-trial"}],
+            "schools": [
+                {
+                    "region_code": "qz-trial",
+                    "name": "钦州试点学校",
+                    "code": "qz-trial-school",
+                    "status": "active",
+                }
+            ],
+            "classes": [
+                {
+                    "school_code": "qz-trial-school",
+                    "grade": "七年级",
+                    "name": "七年级(1)班",
+                    "academic_year": "2026-2027",
+                }
+            ],
+            "subjects": [{"name": "地理", "stage": "junior_high"}],
+        }
+
+    @staticmethod
+    async def export_data_package(db: AsyncSession) -> dict:
+        regions_result = await db.execute(
+            select(Region).where(Region.deleted_at.is_(None)).order_by(Region.code.asc())
+        )
+        schools_result = await db.execute(
+            select(School)
+            .options(selectinload(School.region))
+            .where(School.deleted_at.is_(None))
+            .order_by(School.code.asc())
+        )
+        classes_result = await db.execute(
+            select(Class)
+            .options(selectinload(Class.school))
+            .where(Class.deleted_at.is_(None))
+            .order_by(Class.grade.asc(), Class.name.asc())
+        )
+        subjects_result = await db.execute(
+            select(Subject).where(Subject.deleted_at.is_(None)).order_by(Subject.name.asc())
+        )
+
+        regions = regions_result.scalars().all()
+        schools = schools_result.scalars().all()
+        classes = classes_result.scalars().all()
+        subjects = subjects_result.scalars().all()
+
+        return {
+            "regions": [{"name": item.name, "code": item.code} for item in regions],
+            "schools": [
+                {
+                    "region_code": item.region.code if item.region else "",
+                    "name": item.name,
+                    "code": item.code,
+                    "status": item.status,
+                }
+                for item in schools
+            ],
+            "classes": [
+                {
+                    "school_code": item.school.code if item.school else "",
+                    "grade": item.grade,
+                    "name": item.name,
+                    "academic_year": item.academic_year,
+                }
+                for item in classes
+            ],
+            "subjects": [{"name": item.name, "stage": item.stage} for item in subjects],
+        }
+
+    @staticmethod
+    async def import_data_package(db: AsyncSession, request: OrgDataImportRequest) -> dict:
+        package = request.package
+        summary = _empty_import_summary(request.dry_run)
+
+        region_by_code = await _active_by_field(db, Region, Region.code)
+        school_by_code = await _active_by_field(db, School, School.code)
+        subject_by_name = await _active_by_field(db, Subject, Subject.name)
+
+        for item in package.regions:
+            if item.code in region_by_code:
+                summary["skipped"]["regions"] += 1
+                continue
+            summary["created"]["regions"] += 1
+            if not request.dry_run:
+                region = Region(name=item.name, code=item.code)
+                db.add(region)
+                await db.flush()
+                region_by_code[item.code] = region
+            else:
+                region_by_code[item.code] = SimpleNamespace(
+                    id=f"dry-run-region:{item.code}",
+                    code=item.code,
+                    name=item.name,
+                )
+
+        for item in package.schools:
+            region = region_by_code.get(item.region_code)
+            if region is None:
+                summary["errors"].append(f"School {item.code} references missing region {item.region_code}")
+                continue
+            if item.code in school_by_code:
+                summary["skipped"]["schools"] += 1
+                continue
+            summary["created"]["schools"] += 1
+            if not request.dry_run:
+                school = School(
+                    region_id=region.id,
+                    name=item.name,
+                    code=item.code,
+                    status=item.status,
+                )
+                db.add(school)
+                await db.flush()
+                school_by_code[item.code] = school
+            else:
+                school_by_code[item.code] = SimpleNamespace(
+                    id=f"dry-run-school:{item.code}",
+                    code=item.code,
+                    name=item.name,
+                )
+
+        for item in package.classes:
+            school = school_by_code.get(item.school_code)
+            if school is None:
+                summary["errors"].append(f"Class {item.name} references missing school {item.school_code}")
+                continue
+            exists = await _class_exists(db, school.id, item.grade, item.name, item.academic_year)
+            if exists:
+                summary["skipped"]["classes"] += 1
+                continue
+            summary["created"]["classes"] += 1
+            if not request.dry_run:
+                db.add(
+                    Class(
+                        school_id=school.id,
+                        grade=item.grade,
+                        name=item.name,
+                        academic_year=item.academic_year,
+                    )
+                )
+
+        for item in package.subjects:
+            if item.name in subject_by_name:
+                summary["skipped"]["subjects"] += 1
+                continue
+            summary["created"]["subjects"] += 1
+            if not request.dry_run:
+                subject = Subject(name=item.name, stage=item.stage)
+                db.add(subject)
+                await db.flush()
+                subject_by_name[item.name] = subject
+
+        if not request.dry_run:
+            await db.flush()
+
+        return summary
+
 
 async def _get_active(db: AsyncSession, model: type[Any], item_id: str, message: str):
     result = await db.execute(
@@ -322,3 +485,37 @@ def _subject_to_dict(subject: Subject) -> dict:
         "created_at": subject.created_at.isoformat() if subject.created_at else None,
         "updated_at": subject.updated_at.isoformat() if subject.updated_at else None,
     }
+
+
+def _empty_import_summary(dry_run: bool) -> dict:
+    zero_counts = {"regions": 0, "schools": 0, "classes": 0, "subjects": 0}
+    return {
+        "dry_run": dry_run,
+        "created": zero_counts.copy(),
+        "skipped": zero_counts.copy(),
+        "errors": [],
+    }
+
+
+async def _active_by_field(db: AsyncSession, model, field) -> dict[str, Any]:
+    result = await db.execute(select(model).where(model.deleted_at.is_(None)))
+    return {getattr(item, field.key): item for item in result.scalars().all()}
+
+
+async def _class_exists(
+    db: AsyncSession,
+    school_id: str,
+    grade: str,
+    name: str,
+    academic_year: str,
+) -> bool:
+    result = await db.execute(
+        select(Class).where(
+            Class.deleted_at.is_(None),
+            Class.school_id == school_id,
+            Class.grade == grade,
+            Class.name == name,
+            Class.academic_year == academic_year,
+        )
+    )
+    return result.scalar_one_or_none() is not None

@@ -46,6 +46,11 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Added system-admin password reset contract and tests.
   - [x] Added teacher settings password form.
   - [x] Added admin user reset-password dialog.
+- [x] Phase 6: Add organization data portability for trial setup.
+  - [x] Added non-destructive JSON organization data package contract.
+  - [x] Added template, export, dry-run import, and committed import APIs.
+  - [x] Added repeated-import skip behavior and role blocking tests.
+  - [x] Added school-management UI controls for template/export/import.
 
 ## Decisions
 
@@ -54,6 +59,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - Thinking progress is stored per AI call so future external providers can stream/update the same model.
 - Frontend modules should prefer list/detail/dialog hierarchy over single flat dashboards.
 - Phase 2 prioritizes the post-adoption teaching-assessment loop before expanding new AI scenarios.
+- Organization data import is additive and non-destructive: existing region/school/class/subject data is skipped, not overwritten or deleted.
 
 ## Completed Work
 
@@ -105,3 +111,8 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-25: Added password-change and admin reset-password backend tests, then implemented `/api/v1/auth/change-password` and `/api/v1/users/{user_id}/reset-password`.
 - 2026-05-25: Verified Phase 5 backend with `python -m pytest backend/tests/test_account_security.py -q` (`3 passed`).
 - 2026-05-25: Added teacher password form and admin reset-password dialog, then verified with `npm run build`.
+- 2026-05-25: Started Phase 6 organization data portability for trial setup.
+- 2026-05-25: Added organization data package tests for template, export, dry-run import, committed import, repeated import skip, and non-admin blocking.
+- 2026-05-25: Implemented `/api/v1/org/data/template`, `/api/v1/org/data/export`, and `/api/v1/org/data/import`.
+- 2026-05-25: Verified Phase 6 backend with `python -m pytest backend/tests/test_org_data_portability.py -q` (`2 passed`).
+- 2026-05-25: Added school-management controls for template download, data export, dry-run import, and committed import; verified with `npm run build`.

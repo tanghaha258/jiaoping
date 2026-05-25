@@ -11,6 +11,7 @@ from app.models.user import User
 from app.schemas.org import (
     ClassCreate,
     ClassUpdate,
+    OrgDataImportRequest,
     RegionCreate,
     RegionUpdate,
     SchoolCreate,
@@ -27,6 +28,30 @@ from app.services.org_service import (
 )
 
 router = APIRouter(prefix="/org")
+
+
+@router.get("/data/template")
+async def get_org_data_template(
+    current_user: User = Depends(require_roles("system_admin")),
+):
+    return success_response(OrgService.template_data_package())
+
+
+@router.get("/data/export")
+async def export_org_data(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("system_admin")),
+):
+    return success_response(await OrgService.export_data_package(db))
+
+
+@router.post("/data/import")
+async def import_org_data(
+    data: OrgDataImportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("system_admin")),
+):
+    return success_response(await OrgService.import_data_package(db, data), message="Org data import checked")
 
 
 @router.get("/regions")
