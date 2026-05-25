@@ -54,9 +54,12 @@ class StudentService:
             )
         )
 
-        if status:
-            query = query.where(Task.status == status)
-            count_base = count_base.where(Task.status == status)
+        task_status_filter = status if status in ("published", "closed") else None
+        submission_status_filter = status if status in ("pending", "submitted", "reviewed") else None
+
+        if task_status_filter:
+            query = query.where(Task.status == task_status_filter)
+            count_base = count_base.where(Task.status == task_status_filter)
 
         total_result = await db.execute(count_base)
         total = total_result.scalar()
@@ -70,7 +73,9 @@ class StudentService:
         submission_by_task = {}
         if task_ids:
             sub_result = await db.execute(
-                select(Submission).where(
+                select(Submission)
+                .options(selectinload(Submission.evaluations))
+                .where(
                     Submission.task_id.in_(task_ids),
                     Submission.student_id == student.id,
                 )
@@ -85,7 +90,12 @@ class StudentService:
             submission = submission_by_task.get(task.id)
             item["submission_id"] = submission.id if submission else None
             item["submission_status"] = _student_submission_status(submission)
+            if submission_status_filter and item["submission_status"] != submission_status_filter:
+                continue
             items.append(item)
+
+        if submission_status_filter:
+            total = len(items)
 
         return {
             "items": items,
@@ -94,14 +104,6 @@ class StudentService:
             "page_size": page_size,
             "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 0,
         }
-
-
-def _student_submission_status(submission: Submission | None) -> str:
-    if submission is None:
-        return "pending"
-    if submission.status in ("reviewed", "returned"):
-        return "reviewed"
-    return "submitted"
 
     @staticmethod
     async def list_student_submissions(
@@ -143,3 +145,12 @@ def _student_submission_status(submission: Submission | None) -> str:
             "page_size": page_size,
             "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 0,
         }
+
+
+def _student_submission_status(submission: Submission | None) -> str:
+    if submission is None:
+        return "pending"
+    evaluations = getattr(submission, "evaluations", None) or []
+    if any(evaluation.status == "confirmed" for evaluation in evaluations):
+        return "reviewed"
+    return "submitted"

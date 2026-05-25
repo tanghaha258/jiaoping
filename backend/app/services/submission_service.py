@@ -7,7 +7,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.exceptions import ResourceNotFoundException, PermissionDeniedException
+from app.core.exceptions import (
+    InvalidStateTransitionException,
+    PermissionDeniedException,
+    ResourceNotFoundException,
+)
 from app.models.submission import Submission
 from app.models.task import Task
 from app.models.project import Project
@@ -67,7 +71,11 @@ class SubmissionService:
         }
 
     @staticmethod
-    async def get_submission(db: AsyncSession, submission_id: str) -> Submission:
+    async def get_submission(
+        db: AsyncSession,
+        submission_id: str,
+        current_user: Optional[User] = None,
+    ) -> Submission:
         """Get a submission by ID with all relationships."""
         result = await db.execute(
             select(Submission)
@@ -81,6 +89,13 @@ class SubmissionService:
         submission = result.unique().scalar_one_or_none()
         if submission is None:
             raise ResourceNotFoundException("提交记录不存在")
+        if current_user is not None:
+            if current_user.role == "student" and submission.student_id != current_user.id:
+                raise PermissionDeniedException("No permission to view this submission")
+            if current_user.role in ("teacher", "school_admin", "researcher"):
+                project = submission.task.project if submission.task else None
+                if project and current_user.school_id and project.school_id != current_user.school_id:
+                    raise PermissionDeniedException("No permission to view this submission")
         return submission
 
     @staticmethod
@@ -93,6 +108,14 @@ class SubmissionService:
         # Only the submitting student can update their own submission
         if submission.student_id != user.id and user.role not in ("teacher", "system_admin"):
             raise PermissionDeniedException("只能修改自己的提交")
+
+        if user.role == "student":
+            task = submission.task
+            if task is None:
+                raise ResourceNotFoundException("Task not found for submission")
+            if task.status != "published":
+                raise InvalidStateTransitionException("Only published tasks can be resubmitted")
+            submission.status = "submitted"
 
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():

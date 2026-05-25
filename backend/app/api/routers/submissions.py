@@ -48,7 +48,11 @@ async def get_submission(
     current_user: User = Depends(get_current_user),
 ):
     """Get submission details by ID."""
-    submission = await SubmissionService.get_submission(db=db, submission_id=submission_id)
+    submission = await SubmissionService.get_submission(
+        db=db,
+        submission_id=submission_id,
+        current_user=current_user,
+    )
     return success_response(data=_format_submission_item(submission))
 
 

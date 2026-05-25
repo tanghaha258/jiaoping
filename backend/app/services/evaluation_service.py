@@ -29,7 +29,9 @@ class EvaluationService:
         page_size: int = 20,
         submission_id: Optional[str] = None,
         evaluator_id: Optional[str] = None,
+        evaluator_type: Optional[str] = None,
         status: Optional[str] = None,
+        current_user: User | None = None,
     ) -> dict:
         """List evaluations with filters and pagination."""
         query = (
@@ -44,12 +46,27 @@ class EvaluationService:
         )
         count_base = select(func.count()).select_from(Evaluation)
 
+        if current_user and current_user.role == "student":
+            query = query.join(Submission, Evaluation.submission_id == Submission.id).where(
+                Submission.student_id == current_user.id,
+                Evaluation.status == "confirmed",
+            )
+            count_base = count_base.join(
+                Submission, Evaluation.submission_id == Submission.id
+            ).where(
+                Submission.student_id == current_user.id,
+                Evaluation.status == "confirmed",
+            )
+
         if submission_id:
             query = query.where(Evaluation.submission_id == submission_id)
             count_base = count_base.where(Evaluation.submission_id == submission_id)
         if evaluator_id:
             query = query.where(Evaluation.evaluator_id == evaluator_id)
             count_base = count_base.where(Evaluation.evaluator_id == evaluator_id)
+        if evaluator_type:
+            query = query.where(Evaluation.evaluator_type == evaluator_type)
+            count_base = count_base.where(Evaluation.evaluator_type == evaluator_type)
         if status:
             query = query.where(Evaluation.status == status)
             count_base = count_base.where(Evaluation.status == status)
@@ -110,16 +127,16 @@ class EvaluationService:
             status="draft",
         )
         db.add(evaluation)
-        sub = await db.get(Submission, data.submission_id)
-        if sub is not None and user.role in ("teacher", "system_admin"):
-            sub.status = "reviewed"
-            db.add(sub)
         await db.flush()
         await db.refresh(evaluation)
         return evaluation
 
     @staticmethod
-    async def get_evaluation(db: AsyncSession, evaluation_id: str) -> Evaluation:
+    async def get_evaluation(
+        db: AsyncSession,
+        evaluation_id: str,
+        current_user: User | None = None,
+    ) -> Evaluation:
         """Get an evaluation by ID with all relationships."""
         result = await db.execute(
             select(Evaluation)
@@ -135,6 +152,11 @@ class EvaluationService:
         evaluation = result.unique().scalar_one_or_none()
         if evaluation is None:
             raise ResourceNotFoundException("评价记录不存在")
+        if current_user and current_user.role == "student":
+            if evaluation.status != "confirmed":
+                raise PermissionDeniedException("Students can only view confirmed evaluations")
+            if evaluation.submission is None or evaluation.submission.student_id != current_user.id:
+                raise PermissionDeniedException("Cannot view another student's evaluation")
         return evaluation
 
     @staticmethod
@@ -178,6 +200,10 @@ class EvaluationService:
         evaluation.status = "confirmed"
         evaluation.confirmed_by = user.id
         db.add(evaluation)
+        submission = await db.get(Submission, evaluation.submission_id)
+        if submission is not None:
+            submission.status = "reviewed"
+            db.add(submission)
         await db.flush()
         await db.refresh(evaluation)
         return evaluation

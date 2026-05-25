@@ -22,6 +22,12 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - [x] Verify backend and frontend build.
 - [x] Browser-smoke teacher login and key teacher pages.
 - [x] Commit and push.
+- [x] Phase 2: Complete student submission and teacher evaluation loop.
+  - [x] Backend TDD for student submission list, confirmed feedback visibility, and cross-student access blocking.
+  - [x] Teacher submission review workbench.
+  - [x] Teacher evaluation ledger.
+  - [x] Student task and feedback UI.
+  - [x] Phase 2 verification, commit, and push.
 
 ## Decisions
 
@@ -29,6 +35,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - AI output never publishes directly to students. Teacher adoption is required.
 - Thinking progress is stored per AI call so future external providers can stream/update the same model.
 - Frontend modules should prefer list/detail/dialog hierarchy over single flat dashboards.
+- Phase 2 prioritizes the post-adoption teaching-assessment loop before expanding new AI scenarios.
 
 ## Completed Work
 
@@ -50,3 +57,18 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-25: Smoke-tested API login, lesson-plan draft generation, AI progress retrieval, and resource create/update/delete through FastAPI `TestClient`.
 - 2026-05-25: Browser-smoked teacher UI on `http://127.0.0.1:3000`: login, project list, resource center, and AI lesson-plan workflow page render with normal Chinese text and expected workflow content.
 - 2026-05-25: Committed and pushed branch `codex/agent-contract-crud` to `https://github.com/tanghaha258/jiaoping.git`.
+- 2026-05-25: Started Phase 2 design and plan for student submissions, teacher submission review, evaluation ledger, and student feedback visibility.
+- 2026-05-25: Added backend regression test for the student submission -> teacher confirmed evaluation -> student feedback loop, including cross-student submission and evaluation detail blocking.
+- 2026-05-25: Fixed student submission list service wiring and scoped confirmed evaluations to the owning student.
+- 2026-05-25: Verified Phase 2 backend loop with `python -m pytest backend/tests/test_student_feedback_flow.py -q` (`1 passed`).
+- 2026-05-25: Added real `evaluator_type` API filtering for the evaluation ledger.
+- 2026-05-25: Rebuilt teacher submission review with real task/submission/rubric/evaluation APIs, detail drawer, and teacher-evaluation dialog.
+- 2026-05-25: Rebuilt teacher evaluation center as a real ledger with status/evaluator filters, detail drawer, and confirm action.
+- 2026-05-25: Rebuilt student task list, task detail, and submission detail around real submissions and confirmed feedback cards.
+- 2026-05-25: Added backend guards for student resubmission: existing submissions update through `PATCH /submissions/{id}`, and closed tasks reject resubmission.
+- 2026-05-25: Verified Phase 2 with `python -m pytest backend/tests -q` (`8 passed`), `python -m compileall backend\app`, and `npm run build`.
+- 2026-05-25: Restarted the local backend to clear an old 8000-port instance, then Edge-smoked the full loop: teacher task publish, student submit, teacher review page, evaluation ledger, confirm feedback, and student feedback/detail pages.
+- 2026-05-25: Tightened student task status semantics so `pending/submitted/reviewed` filter by the student's own submission/confirmed-feedback state, not the task publish state.
+- 2026-05-25: Re-ran verification after the semantics fix: `python -m pytest backend/tests -q` (`8 passed`), `python -m compileall backend\app`, `npm run build`, and Edge full-loop smoke.
+- 2026-05-25: Moved submission `reviewed` state to evaluation confirmation, so draft evaluations remain teacher-only until explicitly confirmed.
+- 2026-05-25: Re-ran Edge full-loop smoke after restarting the current backend: teacher published task, student submitted, teacher created/confirmed evaluation, and student feedback pages showed the confirmed feedback.

@@ -18,6 +18,7 @@ async def list_evaluations(
     page_size: int = Query(default=20, ge=1, le=100),
     submission_id: str = Query(default=None),
     evaluator_id: str = Query(default=None),
+    evaluator_type: str = Query(default=None),
     status: str = Query(default=None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -32,7 +33,9 @@ async def list_evaluations(
         page_size=page_size,
         submission_id=submission_id,
         evaluator_id=evaluator_id,
+        evaluator_type=evaluator_type,
         status=status,
+        current_user=current_user,
     )
     return success_response(data=result)
 
@@ -59,7 +62,11 @@ async def get_evaluation(
     current_user: User = Depends(get_current_user),
 ):
     """Get evaluation details by ID."""
-    evaluation = await EvaluationService.get_evaluation(db=db, evaluation_id=evaluation_id)
+    evaluation = await EvaluationService.get_evaluation(
+        db=db,
+        evaluation_id=evaluation_id,
+        current_user=current_user,
+    )
     return success_response(data=_format_evaluation_item(evaluation))
 
 

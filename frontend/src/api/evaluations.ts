@@ -45,7 +45,14 @@ export interface EvaluationCreate {
 }
 
 export function getEvaluations(
-  params?: { page?: number; page_size?: number; submission_id?: string; evaluator_id?: string; status?: string }
+  params?: {
+    page?: number
+    page_size?: number
+    submission_id?: string
+    evaluator_id?: string
+    evaluator_type?: string
+    status?: string
+  }
 ): Promise<ApiResponse<PaginatedData<EvaluationItem>>> {
   return request.get('/evaluations', { params })
 }

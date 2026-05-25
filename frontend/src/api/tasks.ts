@@ -95,6 +95,13 @@ export function getSubmission(
   return request.get(`/submissions/${id}`)
 }
 
+export function updateSubmission(
+  id: string,
+  data: { content?: string; group_name?: string }
+): Promise<ApiResponse<SubmissionItem>> {
+  return request.patch(`/submissions/${id}`, data)
+}
+
 export function getTasksForStudent(
   params?: { page?: number; page_size?: number; status?: string }
 ): Promise<ApiResponse<PaginatedData<TaskItem>>> {
