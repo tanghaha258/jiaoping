@@ -82,6 +82,9 @@ export interface AICallItem {
   response_payload?: Record<string, any>
   status: string
   review_status?: string
+  error_message?: string | null
+  input_summary?: string | null
+  output_summary?: string | null
   created_at: string
   updated_at?: string
   call_type?: string

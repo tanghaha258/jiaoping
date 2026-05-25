@@ -2,10 +2,11 @@
   <div class="admin-dashboard">
     <section class="header-band">
       <div>
+        <p class="eyebrow">运营概览</p>
         <h1>管理驾驶舱</h1>
-        <p>面向部署试运行的学校、用户、项目、资源和 AI Mock 使用概览。</p>
+        <p>面向部署试运行的学校、用户、项目、资源和 AI 调用概览。</p>
       </div>
-      <el-button type="primary" @click="loadData">刷新数据</el-button>
+      <el-button type="primary" :icon="Refresh" @click="loadData">刷新数据</el-button>
     </section>
 
     <section class="metric-grid">
@@ -52,7 +53,7 @@
         </template>
         <div class="ai-note">
           <strong>{{ aiUsage.total_calls }}</strong>
-          <span>当前 AI 调用次数。桂教通智能体后续接入，现阶段保留 Mock 能力保证平台可运行。</span>
+          <span>当前 AI 调用次数。桂教通智能体后续接入时，仍沿用本平台的调用记录和契约。</span>
         </div>
         <el-table :data="aiProviderRows" size="small" border>
           <el-table-column prop="provider" label="Provider" />
@@ -66,6 +67,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Refresh } from '@element-plus/icons-vue'
 import { getAIUsage, getDashboardOverview, getProjectTrends } from '@/api/dashboard'
 import type { AIUsage, DashboardOverview, ProjectTrends } from '@/api/dashboard'
 
@@ -104,7 +106,9 @@ const statusRows = computed(() => trends.value.by_status.map((item) => ({
 })))
 
 const trendRows = computed(() => trends.value.by_month)
-const aiProviderRows = computed(() => aiUsage.value.by_provider.length ? aiUsage.value.by_provider : [{ provider: 'mock', count: 0 }])
+const aiProviderRows = computed(() => (
+  aiUsage.value.by_provider.length ? aiUsage.value.by_provider : [{ provider: 'mock', count: 0 }]
+))
 
 async function loadData() {
   try {
@@ -133,27 +137,34 @@ onMounted(loadData)
 .header-band,
 .metric-card,
 .section-card {
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
 }
 
 .header-band {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 20px;
-  border: 1px solid #e5eef9;
+  padding: 20px 24px;
+  border: 1px solid #e4e7ed;
 }
 
 .header-band h1 {
-  color: #173b82;
+  margin: 4px 0 8px;
+  color: #1f2f5f;
   font-size: 24px;
 }
 
 .header-band p {
-  margin-top: 6px;
-  color: #6c7d98;
+  margin: 0;
+  color: #606266;
+}
+
+.eyebrow {
+  color: #245cff !important;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .metric-grid {
@@ -163,12 +174,12 @@ onMounted(loadData)
 }
 
 .metric-card {
-  border: 1px solid #e7eef7;
+  border: 1px solid #e4e7ed;
 }
 
 .metric-card span,
 .metric-card em {
-  color: #7b8ba6;
+  color: #606266;
   font-style: normal;
   font-size: 12px;
 }
@@ -176,7 +187,7 @@ onMounted(loadData)
 .metric-card strong {
   display: block;
   margin: 8px 0;
-  color: #173b82;
+  color: #1f2f5f;
   font-size: 28px;
 }
 
@@ -198,16 +209,16 @@ onMounted(loadData)
   margin-bottom: 12px;
   padding: 14px;
   border-radius: 8px;
-  background: #f4f8ff;
+  background: #f5f7fa;
 }
 
 .ai-note strong {
-  color: #173b82;
+  color: #245cff;
   font-size: 26px;
 }
 
 .ai-note span {
-  color: #6c7d98;
+  color: #606266;
   line-height: 1.6;
 }
 
@@ -223,6 +234,11 @@ onMounted(loadData)
   .metric-grid,
   .content-grid {
     grid-template-columns: 1fr;
+  }
+
+  .header-band {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>

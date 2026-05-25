@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -20,12 +20,16 @@ class UserService:
         db: AsyncSession,
         page: int = 1,
         page_size: int = 20,
+        keyword: Optional[str] = None,
         role: Optional[str] = None,
         status: Optional[str] = None,
     ) -> dict:
         """List users with pagination and optional filters."""
         query = select(User).options(joinedload(User.school))
 
+        if keyword:
+            pattern = f"%{keyword}%"
+            query = query.where(or_(User.username.like(pattern), User.name.like(pattern)))
         if role:
             query = query.where(User.role == role)
         if status:
@@ -33,6 +37,9 @@ class UserService:
 
         # Count total
         count_query = select(func.count()).select_from(User)
+        if keyword:
+            pattern = f"%{keyword}%"
+            count_query = count_query.where(or_(User.username.like(pattern), User.name.like(pattern)))
         if role:
             count_query = count_query.where(User.role == role)
         if status:

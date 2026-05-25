@@ -15,6 +15,8 @@ from app.api.routers.rubrics import router as rubrics_router
 from app.api.routers.evaluations import router as evaluations_router
 from app.api.routers.resources import router as resources_router
 from app.api.routers.student import router as student_router
+from app.api.routers.org import router as org_router
+from app.api.routers.settings import router as settings_router
 
 api_router = APIRouter()
 
@@ -32,3 +34,5 @@ api_router.include_router(rubrics_router, tags=["rubrics"])
 api_router.include_router(evaluations_router, tags=["evaluations"])
 api_router.include_router(resources_router, tags=["resources"])
 api_router.include_router(student_router, tags=["student"])
+api_router.include_router(org_router, tags=["organization"])
+api_router.include_router(settings_router, tags=["settings"])

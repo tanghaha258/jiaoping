@@ -28,6 +28,12 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Teacher evaluation ledger.
   - [x] Student task and feedback UI.
   - [x] Phase 2 verification, commit, and push.
+- [x] Phase 3: Complete admin operations base data and ledgers.
+  - [x] Backend TDD for organization CRUD, system settings, user management, and role blocking.
+  - [x] Admin user management page.
+  - [x] Admin school/class/subject/region management page.
+  - [x] Admin settings, audit log, and AI call ledger pages.
+  - [x] Phase 3 verification, browser smoke, commit, and push.
 
 ## Decisions
 
@@ -72,3 +78,9 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-25: Re-ran verification after the semantics fix: `python -m pytest backend/tests -q` (`8 passed`), `python -m compileall backend\app`, `npm run build`, and Edge full-loop smoke.
 - 2026-05-25: Moved submission `reviewed` state to evaluation confirmation, so draft evaluations remain teacher-only until explicitly confirmed.
 - 2026-05-25: Re-ran Edge full-loop smoke after restarting the current backend: teacher published task, student submitted, teacher created/confirmed evaluation, and student feedback pages showed the confirmed feedback.
+- 2026-05-25: Started Phase 3 admin operations for deployable base-data maintenance and operational ledgers.
+- 2026-05-25: Added `/api/v1/org/*` organization APIs for regions, schools, classes, and subjects.
+- 2026-05-25: Added `/api/v1/settings` JSON settings APIs and keyword search for user lists.
+- 2026-05-25: Rebuilt admin user management, school management, system settings, audit logs, AI call history, and admin dashboard with real APIs and readable Chinese copy.
+- 2026-05-25: Verified Phase 3 backend with `python -m pytest backend/tests/test_admin_operations.py -q` (`3 passed`) and all backend tests with `python -m pytest backend/tests -q` (`11 passed`).
+- 2026-05-25: Verified frontend with `npm run build` and Edge-smoked admin dashboard, users, schools, settings, audit logs, and AI calls pages.
