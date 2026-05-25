@@ -47,4 +47,4 @@
 - [x] Run `python -m compileall backend\app`.
 - [x] Run `npm run build`.
 - [x] Run `git diff --check`.
-- [ ] Commit and push `codex/agent-contract-crud`.
+- [x] Commit and push `codex/agent-contract-crud`.

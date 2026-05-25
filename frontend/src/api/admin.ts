@@ -127,6 +127,41 @@ export interface OrgDataImportSummary {
   errors: string[]
 }
 
+export interface UserClassPackageRef {
+  grade: string
+  name: string
+  academic_year: string
+}
+
+export interface UserPackageItem {
+  username: string
+  name: string
+  role: UserRole
+  school_code: string
+  class: UserClassPackageRef | null
+  initial_password?: string
+  status?: string
+}
+
+export interface UserDataPackage {
+  users: UserPackageItem[]
+}
+
+export interface UserInitialPasswordItem {
+  username: string
+  name: string
+  role: UserRole
+  initial_password: string
+}
+
+export interface UserDataImportSummary {
+  dry_run: boolean
+  created: Record<'users', number>
+  skipped: Record<'users', number>
+  errors: string[]
+  initial_passwords: UserInitialPasswordItem[]
+}
+
 export function getAdminUsers(params?: {
   page?: number
   page_size?: number
@@ -154,6 +189,21 @@ export function resetAdminUserPassword(
   newPassword: string
 ): Promise<ApiResponse<{ updated: boolean; user_id: string }>> {
   return request.post(`/users/${id}/reset-password`, { new_password: newPassword })
+}
+
+export function getUserDataTemplate(): Promise<ApiResponse<UserDataPackage>> {
+  return request.get('/users/data/template')
+}
+
+export function exportUserDataPackage(): Promise<ApiResponse<UserDataPackage>> {
+  return request.get('/users/data/export')
+}
+
+export function importUserDataPackage(data: {
+  dry_run: boolean
+  package: UserDataPackage
+}): Promise<ApiResponse<UserDataImportSummary>> {
+  return request.post('/users/data/import', data)
 }
 
 export function getRegions(params?: {

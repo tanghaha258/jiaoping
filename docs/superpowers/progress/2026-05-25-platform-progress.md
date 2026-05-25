@@ -51,6 +51,11 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Added template, export, dry-run import, and committed import APIs.
   - [x] Added repeated-import skip behavior and role blocking tests.
   - [x] Added school-management UI controls for template/export/import.
+- [x] Phase 7: Add user account portability for trial setup.
+  - [x] Added non-destructive JSON teacher/student account package contract.
+  - [x] Added template, export, dry-run import, and committed import APIs.
+  - [x] Added initial-password handout list for newly created accounts only.
+  - [x] Added user-management UI controls for template/export/import.
 
 ## Decisions
 
@@ -60,6 +65,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - Frontend modules should prefer list/detail/dialog hierarchy over single flat dashboards.
 - Phase 2 prioritizes the post-adoption teaching-assessment loop before expanding new AI scenarios.
 - Organization data import is additive and non-destructive: existing region/school/class/subject data is skipped, not overwritten or deleted.
+- User account import is additive and non-destructive: existing usernames are skipped, existing passwords are never exported, and initial passwords are only returned for accounts created by the current import.
 
 ## Completed Work
 
@@ -116,3 +122,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-25: Implemented `/api/v1/org/data/template`, `/api/v1/org/data/export`, and `/api/v1/org/data/import`.
 - 2026-05-25: Verified Phase 6 backend with `python -m pytest backend/tests/test_org_data_portability.py -q` (`2 passed`).
 - 2026-05-25: Added school-management controls for template download, data export, dry-run import, and committed import; verified with `npm run build`.
+- 2026-05-25: Started Phase 7 user account portability for trial setup.
+- 2026-05-25: Added user account package tests for template, password-redacted export, dry-run import, committed import, student class binding, repeated import skip, login with imported password, and non-admin blocking.
+- 2026-05-25: Verified Phase 7 backend with `python -m pytest backend/tests/test_user_account_portability.py -q` (`3 passed`).
+- 2026-05-25: Added user-management controls for account template download, account export, dry-run import, committed import, import summary, and newly created account password handout list; verified with `npm run build`.

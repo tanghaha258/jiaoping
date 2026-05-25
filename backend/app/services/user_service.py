@@ -8,8 +8,10 @@ from sqlalchemy.orm import joinedload
 
 from app.core.exceptions import ResourceNotFoundException
 from app.core.security import hash_password
+from app.models.class_ import Class
+from app.models.school import School
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
+from app.schemas.user import UserCreate, UserDataImportRequest, UserPackageItem, UserUpdate
 
 
 class UserService:
@@ -145,3 +147,175 @@ class UserService:
         await db.flush()
         await db.refresh(user)
         return user
+
+    @staticmethod
+    def template_data_package() -> dict:
+        """Return a portable account import template."""
+        return {
+            "users": [
+                {
+                    "username": "qz-teacher-001",
+                    "name": "Sample Teacher",
+                    "role": "teacher",
+                    "school_code": "qz01",
+                    "class": None,
+                    "initial_password": "password",
+                },
+                {
+                    "username": "qz-student-001",
+                    "name": "Sample Student",
+                    "role": "student",
+                    "school_code": "qz01",
+                    "class": {
+                        "grade": "grade_7",
+                        "name": "Class 1",
+                        "academic_year": "2025-2026",
+                    },
+                    "initial_password": "password",
+                },
+            ]
+        }
+
+    @staticmethod
+    async def export_data_package(db: AsyncSession) -> dict:
+        """Export user accounts without password material."""
+        result = await db.execute(
+            select(User)
+            .options(joinedload(User.school), joinedload(User.student_class))
+            .where(User.deleted_at.is_(None))
+            .order_by(User.username.asc())
+        )
+        users = result.unique().scalars().all()
+        return {"users": [_user_to_package_item(user) for user in users]}
+
+    @staticmethod
+    async def import_data_package(db: AsyncSession, request: UserDataImportRequest) -> dict:
+        """Validate or import a portable user account package."""
+        summary = _empty_user_import_summary(request.dry_run)
+        seen_usernames: set[str] = set()
+        schools_by_code = await _active_schools_by_code(db)
+        existing_users = await _active_users_by_username(db)
+        allowed_roles = {"school_admin", "researcher", "teacher", "student"}
+
+        for index, item in enumerate(request.package.users, start=1):
+            row_label = f"Row {index} ({item.username})"
+            if item.username in seen_usernames:
+                summary["errors"].append(f"{row_label}: duplicate username in package")
+                continue
+            seen_usernames.add(item.username)
+
+            if item.username in existing_users:
+                summary["skipped"]["users"] += 1
+                continue
+
+            if item.role not in allowed_roles:
+                summary["errors"].append(f"{row_label}: unsupported role {item.role}")
+                continue
+
+            if not item.initial_password:
+                summary["errors"].append(f"{row_label}: initial_password is required")
+                continue
+
+            school = schools_by_code.get(item.school_code)
+            if school is None:
+                summary["errors"].append(f"{row_label}: missing school {item.school_code}")
+                continue
+
+            class_id = None
+            if item.role == "student":
+                if item.class_ref is None:
+                    summary["errors"].append(f"{row_label}: student class is required")
+                    continue
+                class_item = await _find_class(db, school.id, item)
+                if class_item is None:
+                    summary["errors"].append(
+                        f"{row_label}: missing class {item.class_ref.grade} {item.class_ref.name} "
+                        f"{item.class_ref.academic_year}"
+                    )
+                    continue
+                class_id = class_item.id
+
+            summary["created"]["users"] += 1
+            if not request.dry_run:
+                user = User(
+                    username=item.username,
+                    password_hash=hash_password(item.initial_password),
+                    name=item.name,
+                    role=item.role,
+                    school_id=school.id,
+                    class_id=class_id,
+                    status="active",
+                )
+                db.add(user)
+                await db.flush()
+                existing_users[item.username] = user
+                summary["initial_passwords"].append(
+                    {
+                        "username": item.username,
+                        "name": item.name,
+                        "role": item.role,
+                        "initial_password": item.initial_password,
+                    }
+                )
+
+        if not request.dry_run:
+            await db.flush()
+
+        return summary
+
+
+def _user_to_package_item(user: User) -> dict:
+    school = user.__dict__.get("school")
+    class_item = user.__dict__.get("student_class")
+    class_ref = None
+    if class_item:
+        class_ref = {
+            "grade": class_item.grade,
+            "name": class_item.name,
+            "academic_year": class_item.academic_year,
+        }
+    return {
+        "username": user.username,
+        "name": user.name,
+        "role": user.role,
+        "school_code": school.code if school else "",
+        "class": class_ref,
+        "status": user.status,
+    }
+
+
+def _empty_user_import_summary(dry_run: bool) -> dict:
+    return {
+        "dry_run": dry_run,
+        "created": {"users": 0},
+        "skipped": {"users": 0},
+        "errors": [],
+        "initial_passwords": [],
+    }
+
+
+async def _active_schools_by_code(db: AsyncSession) -> dict[str, School]:
+    result = await db.execute(
+        select(School).where(School.deleted_at.is_(None), School.status == "active")
+    )
+    return {item.code: item for item in result.scalars().all()}
+
+
+async def _active_users_by_username(db: AsyncSession) -> dict[str, User]:
+    result = await db.execute(select(User).where(User.deleted_at.is_(None)))
+    return {item.username: item for item in result.scalars().all()}
+
+
+async def _find_class(db: AsyncSession, school_id: str, item: UserPackageItem) -> Class | None:
+    if item.class_ref is None:
+        return None
+    result = await db.execute(
+        select(Class).where(
+            Class.deleted_at.is_(None),
+            Class.school_id == school_id,
+            Class.grade == item.class_ref.grade,
+            Class.name == item.class_ref.name,
+            Class.academic_year == item.class_ref.academic_year,
+        )
+    )
+    return result.scalar_one_or_none()

@@ -9,6 +9,7 @@ from app.models.user import User
 from app.schemas.user import (
     ResetPasswordRequest,
     UserCreate,
+    UserDataImportRequest,
     UserResponse,
     UserStatusUpdate,
     UserUpdate,
@@ -51,6 +52,47 @@ async def create_user(
     user = await UserService.create_user(db=db, data=data)
     user_response = UserResponse.model_validate(user)
     return success_response(data=user_response.model_dump(), message="User created")
+
+
+@router.get("/data/template")
+async def get_user_data_template(
+    current_user: User = Depends(require_roles("system_admin")),
+):
+    """Return a portable user-account import template."""
+    return success_response(UserService.template_data_package())
+
+
+@router.get("/data/export")
+async def export_user_data(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("system_admin")),
+):
+    """Export user accounts without password material."""
+    return success_response(await UserService.export_data_package(db))
+
+
+@router.post("/data/import")
+async def import_user_data(
+    data: UserDataImportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("system_admin")),
+):
+    """Validate or import a portable user-account package."""
+    summary = await UserService.import_data_package(db=db, request=data)
+    if not data.dry_run:
+        await create_audit_log(
+            db=db,
+            user_id=current_user.id,
+            action="user.import",
+            target_type="user",
+            target_id="bulk",
+            detail={
+                "created": summary["created"]["users"],
+                "skipped": summary["skipped"]["users"],
+                "errors": len(summary["errors"]),
+            },
+        )
+    return success_response(data=summary, message="User data import checked")
 
 
 @router.get("/{user_id}")

@@ -2,7 +2,7 @@
 
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserCreate(BaseModel):
@@ -64,3 +64,37 @@ class UserListResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
+
+
+class UserClassPackageRef(BaseModel):
+    """Portable class reference used by user account packages."""
+
+    grade: str = Field(..., min_length=1, max_length=50)
+    name: str = Field(..., min_length=1, max_length=100)
+    academic_year: str = Field(..., min_length=1, max_length=20)
+
+
+class UserPackageItem(BaseModel):
+    """One account row in the import/export package."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    username: str = Field(..., min_length=2, max_length=100)
+    name: str = Field(..., min_length=1, max_length=100)
+    role: str = Field(..., min_length=1, max_length=50)
+    school_code: str = Field(..., min_length=1, max_length=50)
+    class_ref: Optional[UserClassPackageRef] = Field(default=None, alias="class")
+    initial_password: Optional[str] = Field(default=None, min_length=6, max_length=100)
+
+
+class UserDataPackage(BaseModel):
+    """Portable account package."""
+
+    users: list[UserPackageItem] = Field(default_factory=list)
+
+
+class UserDataImportRequest(BaseModel):
+    """Request for validating or importing a user account package."""
+
+    dry_run: bool = True
+    package: UserDataPackage

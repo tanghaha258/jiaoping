@@ -8,6 +8,9 @@
       </div>
       <div class="header-actions">
         <el-button :icon="Refresh" :loading="loading" @click="loadUsers">刷新</el-button>
+        <el-button :icon="Download" @click="downloadUserTemplate">下载账号模板</el-button>
+        <el-button :icon="Download" @click="downloadUserExport">导出账号</el-button>
+        <el-button type="primary" :icon="Upload" @click="openUserImportDialog">导入账号包</el-button>
         <el-button type="primary" :icon="Plus" @click="openCreate">新增用户</el-button>
       </div>
     </section>
@@ -165,6 +168,55 @@
         <el-button type="primary" :loading="resetPasswordSaving" @click="submitResetPassword">确认重置</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="importDialog" title="导入账号数据包" width="760px" :close-on-click-modal="false">
+      <el-alert
+        title="导入是增量写入：已有用户名会跳过，不会覆盖密码或资料。正式导入后仅显示本次新建账号的初始密码。"
+        type="info"
+        show-icon
+        :closable="false"
+      />
+      <el-input
+        v-model="importText"
+        type="textarea"
+        :rows="14"
+        class="import-textarea"
+        placeholder="粘贴 JSON 账号包。学生账号需提供 school_code 和 class；教师账号可不填班级。"
+      />
+      <div v-if="importSummary" class="summary">
+        <strong>{{ importSummary.dry_run ? '校验结果' : '导入结果' }}</strong>
+        <div class="summary-grid">
+          <span>账号：新增 {{ importSummary.created.users }}，跳过 {{ importSummary.skipped.users }}</span>
+          <span>错误：{{ importSummary.errors.length }}</span>
+        </div>
+        <el-alert
+          v-if="importSummary.errors.length"
+          :title="importSummary.errors.join('；')"
+          type="error"
+          show-icon
+          :closable="false"
+        />
+        <el-table
+          v-if="importSummary.initial_passwords.length"
+          :data="importSummary.initial_passwords"
+          border
+          size="small"
+          class="password-table"
+        >
+          <el-table-column prop="username" label="用户名" min-width="150" />
+          <el-table-column prop="name" label="姓名" min-width="120" />
+          <el-table-column label="角色" width="110">
+            <template #default="{ row }">{{ roleTextMap[row.role] || row.role }}</template>
+          </el-table-column>
+          <el-table-column prop="initial_password" label="初始密码" min-width="140" />
+        </el-table>
+      </div>
+      <template #footer>
+        <el-button @click="importDialog = false">取消</el-button>
+        <el-button :loading="importing" @click="submitUserImport(true)">仅校验</el-button>
+        <el-button type="primary" :loading="importing" @click="submitUserImport(false)">确认导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -172,17 +224,20 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { Plus, Refresh } from '@element-plus/icons-vue'
+import { Download, Plus, Refresh, Upload } from '@element-plus/icons-vue'
 import {
   createAdminUser,
+  exportUserDataPackage,
   getAdminUsers,
   getClasses,
   getSchools,
+  getUserDataTemplate,
+  importUserDataPackage,
   resetAdminUserPassword,
   updateAdminUser,
   updateAdminUserStatus
 } from '@/api/admin'
-import type { AdminUserItem, ClassItem, SchoolItem } from '@/api/admin'
+import type { AdminUserItem, ClassItem, SchoolItem, UserDataImportSummary, UserDataPackage } from '@/api/admin'
 import type { UserRole } from '@/types/api'
 
 const roleOptions: { label: string; value: UserRole }[] = [
@@ -210,12 +265,16 @@ const editingUser = ref<AdminUserItem | null>(null)
 const resetPasswordUser = ref<AdminUserItem | null>(null)
 const loading = ref(false)
 const saving = ref(false)
+const importing = ref(false)
 const resetPasswordSaving = ref(false)
 const detailVisible = ref(false)
 const formVisible = ref(false)
 const resetPasswordVisible = ref(false)
+const importDialog = ref(false)
 const formRef = ref<FormInstance>()
 const resetPasswordFormRef = ref<FormInstance>()
+const importText = ref('')
+const importSummary = ref<UserDataImportSummary | null>(null)
 
 const filters = reactive({ keyword: '', role: '', status: '' })
 const pagination = reactive({ page: 1, pageSize: 20, total: 0 })
@@ -269,6 +328,16 @@ function formatDate(value?: string | null) {
   return date.toLocaleString('zh-CN', { hour12: false })
 }
 
+function downloadJson(filename: string, payload: unknown) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 async function loadSchools() {
   const res = await getSchools({ page: 1, page_size: 100 })
   schools.value = res.data.items || []
@@ -311,6 +380,50 @@ async function loadUsers() {
     ElMessage.error(e?.message || '加载用户失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function downloadUserTemplate() {
+  const res = await getUserDataTemplate()
+  downloadJson('user-account-template.json', res.data)
+}
+
+async function downloadUserExport() {
+  const res = await exportUserDataPackage()
+  downloadJson(`user-account-export-${new Date().toISOString().slice(0, 10)}.json`, res.data)
+}
+
+function openUserImportDialog() {
+  importText.value = ''
+  importSummary.value = null
+  importDialog.value = true
+}
+
+function parseUserImportPackage(): UserDataPackage | null {
+  try {
+    return JSON.parse(importText.value) as UserDataPackage
+  } catch {
+    ElMessage.error('JSON 格式不正确')
+    return null
+  }
+}
+
+async function submitUserImport(dryRun: boolean) {
+  const parsed = parseUserImportPackage()
+  if (!parsed) return
+
+  importing.value = true
+  try {
+    const res = await importUserDataPackage({ dry_run: dryRun, package: parsed })
+    importSummary.value = res.data
+    if (!dryRun && res.data.errors.length === 0) {
+      ElMessage.success('账号数据已导入')
+      await loadUsers()
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '导入账号失败')
+  } finally {
+    importing.value = false
   }
 }
 
@@ -501,6 +614,27 @@ onMounted(async () => {
 
 .reset-form {
   margin-top: 18px;
+}
+
+.import-textarea {
+  margin-top: 14px;
+}
+
+.summary {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.summary-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: #303133;
+}
+
+.password-table {
+  margin-top: 2px;
 }
 
 @media (max-width: 760px) {
