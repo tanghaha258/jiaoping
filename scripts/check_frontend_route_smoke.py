@@ -49,7 +49,7 @@ ROUTE_EXPECTATIONS: tuple[RouteExpectation, ...] = (
     RouteExpectation("path: 'users'", "views/admin/UserManagement.vue", "用户管理", ("用户管理", "导入账号包")),
     RouteExpectation("path: 'schools'", "views/admin/SchoolManagement.vue", "学校管理", ("学校管理", "导入数据包")),
     RouteExpectation("path: 'ai-agents'", "views/admin/AIAgentConfig.vue", "AI智能体", ("AI智能体治理", "本地契约层", "Provider适配")),
-    RouteExpectation("path: 'ai-calls'", "views/admin/AICallHistory.vue", "AI调用", ("AI 调用记录", "调用台账")),
+    RouteExpectation("path: 'ai-calls'", "views/admin/AICallHistory.vue", "AI调用", ("AI调用观测", "调用链路", "思考进度")),
     RouteExpectation("path: 'audit-logs'", "views/admin/AuditLogViewer.vue", "审计日志", ("审计日志", "日志记录")),
     RouteExpectation("path: 'settings'", "views/admin/SystemSettings.vue", "系统设置", ("系统设置",)),
 )
