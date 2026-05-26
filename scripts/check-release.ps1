@@ -11,6 +11,9 @@ python -m compileall backend\app
 Write-Host "Checking frontend text health..."
 python scripts\check_frontend_text_health.py
 
+Write-Host "Checking frontend route smoke..."
+python scripts\check_frontend_route_smoke.py
+
 Write-Host "Building frontend..."
 Set-Location (Join-Path $Root "frontend")
 npm run build

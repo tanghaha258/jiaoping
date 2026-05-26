@@ -66,6 +66,8 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Added Phase 9 implementation plan.
   - [x] Added frontend UTF-8 text-health regression tests.
   - [x] Added frontend text-health release check.
+  - [x] Added static route smoke checks for core admin, teacher, student, and research pages.
+  - [x] Added route smoke release check.
   - [ ] Continue page-by-page browser smoke and visual polish.
 - [ ] Phase 10: Build provider-neutral AI contract foundation.
   - [ ] Keep GJT as a provider adapter, not the platform core.
@@ -156,3 +158,8 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-26: Added `backend/tests/test_frontend_text_health.py`; verified red state first with missing script/release integration failures.
 - 2026-05-26: Added `scripts/check_frontend_text_health.py` and wired it into `scripts/check-release.ps1`.
 - 2026-05-26: Verified Phase 9 text-health target with `python -m pytest backend/tests/test_frontend_text_health.py -q` (`3 passed`).
+- 2026-05-26: Added `backend/tests/test_frontend_route_smoke.py`; verified red state first with missing script/release integration failures.
+- 2026-05-26: Added `scripts/check_frontend_route_smoke.py` to protect 27 core route entries and page anchors across admin, teacher, student, and research roles.
+- 2026-05-26: Wired route smoke into `scripts/check-release.ps1` and verified targeted checks with `python -m pytest backend/tests/test_frontend_route_smoke.py backend/tests/test_frontend_text_health.py -q` (`6 passed`).
+- 2026-05-26: Verified Phase 9 route smoke in the full release path with `scripts/check-release.ps1` (`32 passed`, backend compile, frontend text health, route smoke, frontend build).
+- 2026-05-26: Browser-smoked `/admin/ai-agents`; the page rendered normal Chinese text, local contract panel, and 4 AI agent rows matching the backend API.
