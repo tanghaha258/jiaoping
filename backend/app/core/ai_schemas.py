@@ -28,32 +28,32 @@ class AgentConfig(BaseModel):
 LESSON_PLAN_THINKING_STEPS: list[dict[str, Any]] = [
     {
         "code": "understanding",
-        "title": "Understand teaching request",
-        "description": "Parse theme, grade, class, subject, lesson count and teacher constraints.",
+        "title": "理解教学需求",
+        "description": "解析主题、年级、班级、学科、课时数和教师补充约束。",
         "percent": 15,
     },
     {
         "code": "retrieving_context",
-        "title": "Retrieve school context",
-        "description": "Load subjects, classes, agent configuration and reusable teaching context.",
+        "title": "读取校本上下文",
+        "description": "读取学科、班级、智能体配置和可复用的教学上下文。",
         "percent": 35,
     },
     {
         "code": "drafting",
-        "title": "Draft teaching plan",
-        "description": "Ask the configured provider to create the first structured draft.",
+        "title": "生成结构化草案",
+        "description": "调用当前 Provider 生成符合本地契约的教学方案草案。",
         "percent": 65,
     },
     {
         "code": "normalizing",
-        "title": "Normalize business objects",
-        "description": "Convert provider output into project, tasks, rubric, resources and notes.",
+        "title": "标准化业务对象",
+        "description": "将 Provider 输出转换为项目、任务、量规、资源和教师提示。",
         "percent": 90,
     },
     {
         "code": "awaiting_review",
-        "title": "Await teacher review",
-        "description": "Persist the draft and wait for teacher edits before adoption.",
+        "title": "等待教师审阅",
+        "description": "保存草案，等待教师修改确认后再采纳进入业务系统。",
         "percent": 100,
     },
 ]
@@ -62,7 +62,7 @@ LESSON_PLAN_THINKING_STEPS: list[dict[str, Any]] = [
 AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
     {
         "scenario": "lesson_plan",
-        "name": "AI lesson-plan workflow",
+        "name": "AI教学方案工作流",
         "version": "2026-05-v1",
         "provider_modes": ["mock", "gjt_api"],
         "input_contract": {
@@ -110,11 +110,11 @@ AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
             },
         },
         "thinking_steps": LESSON_PLAN_THINKING_STEPS,
-        "adoption_rule": "Teacher adoption creates an active project, draft tasks, a personal rubric and suggested resources.",
+        "adoption_rule": "教师采纳后创建激活项目、草稿任务、个人量规和资源建议。",
     },
     {
         "scenario": "learning_diagnosis",
-        "name": "Learning diagnosis",
+        "name": "学情诊断",
         "version": "2026-05-v1",
         "provider_modes": ["mock", "gjt_api"],
         "input_contract": {
@@ -126,15 +126,15 @@ AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
             "required": ["class_profile", "tiered_suggestions"],
         },
         "thinking_steps": [
-            {"code": "collecting_evidence", "title": "Collect evidence", "percent": 25},
-            {"code": "analyzing_patterns", "title": "Analyze learning patterns", "percent": 70},
-            {"code": "awaiting_review", "title": "Await teacher review", "percent": 100},
+            {"code": "collecting_evidence", "title": "收集学习证据", "percent": 25},
+            {"code": "analyzing_patterns", "title": "分析学习模式", "percent": 70},
+            {"code": "awaiting_review", "title": "等待教师审阅", "percent": 100},
         ],
-        "adoption_rule": "Reserved for diagnosis records; no direct student-facing publication.",
+        "adoption_rule": "诊断结果仅进入教师审阅区，不能直接发布到学生端。",
     },
     {
         "scenario": "rubric_generation",
-        "name": "Rubric generation",
+        "name": "评价量规生成",
         "version": "2026-05-v1",
         "provider_modes": ["mock", "gjt_api"],
         "input_contract": {
@@ -146,15 +146,15 @@ AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
             "required": ["name", "items"],
         },
         "thinking_steps": [
-            {"code": "understanding_goal", "title": "Understand goal", "percent": 30},
-            {"code": "building_dimensions", "title": "Build dimensions", "percent": 80},
-            {"code": "awaiting_review", "title": "Await teacher review", "percent": 100},
+            {"code": "understanding_goal", "title": "理解评价目标", "percent": 30},
+            {"code": "building_dimensions", "title": "生成评价维度", "percent": 80},
+            {"code": "awaiting_review", "title": "等待教师审阅", "percent": 100},
         ],
-        "adoption_rule": "Teacher adoption creates or updates a rubric only.",
+        "adoption_rule": "教师采纳后只创建或更新评价量规。",
     },
     {
         "scenario": "resource_recommendation",
-        "name": "Resource recommendation",
+        "name": "资源推荐",
         "version": "2026-05-v1",
         "provider_modes": ["mock", "gjt_api"],
         "input_contract": {
@@ -166,15 +166,15 @@ AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
             "required": ["resources"],
         },
         "thinking_steps": [
-            {"code": "matching_need", "title": "Match resource need", "percent": 35},
-            {"code": "ranking_resources", "title": "Rank resources", "percent": 80},
-            {"code": "awaiting_review", "title": "Await teacher review", "percent": 100},
+            {"code": "matching_need", "title": "匹配资源需求", "percent": 35},
+            {"code": "ranking_resources", "title": "排序推荐资源", "percent": 80},
+            {"code": "awaiting_review", "title": "等待教师审阅", "percent": 100},
         ],
-        "adoption_rule": "Teacher adoption adds resource metadata or a recommendation list.",
+        "adoption_rule": "教师采纳后写入资源元数据或形成推荐清单。",
     },
     {
         "scenario": "teaching_reflection",
-        "name": "Teaching reflection",
+        "name": "教学反思",
         "version": "2026-05-v1",
         "provider_modes": ["mock", "gjt_api"],
         "input_contract": {
@@ -186,11 +186,11 @@ AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
             "required": ["strengths", "improvements"],
         },
         "thinking_steps": [
-            {"code": "summarizing_evidence", "title": "Summarize evidence", "percent": 40},
-            {"code": "suggesting_improvements", "title": "Suggest improvements", "percent": 85},
-            {"code": "awaiting_review", "title": "Await teacher review", "percent": 100},
+            {"code": "summarizing_evidence", "title": "汇总实施证据", "percent": 40},
+            {"code": "suggesting_improvements", "title": "生成改进建议", "percent": 85},
+            {"code": "awaiting_review", "title": "等待教师审阅", "percent": 100},
         ],
-        "adoption_rule": "Teacher adoption stores reflection suggestions for later reuse.",
+        "adoption_rule": "教师采纳后保存教学反思建议，供后续复盘复用。",
     },
 ]
 

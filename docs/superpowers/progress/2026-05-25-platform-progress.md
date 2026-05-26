@@ -68,6 +68,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Added frontend text-health release check.
   - [x] Added static route smoke checks for core admin, teacher, student, and research pages.
   - [x] Added route smoke release check.
+  - [x] Localized AI contract names, thinking steps, and adoption rules for admin-facing contract panels.
   - [ ] Continue page-by-page browser smoke and visual polish.
 - [ ] Phase 10: Build provider-neutral AI contract foundation.
   - [ ] Keep GJT as a provider adapter, not the platform core.
@@ -163,3 +164,6 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-26: Wired route smoke into `scripts/check-release.ps1` and verified targeted checks with `python -m pytest backend/tests/test_frontend_route_smoke.py backend/tests/test_frontend_text_health.py -q` (`6 passed`).
 - 2026-05-26: Verified Phase 9 route smoke in the full release path with `scripts/check-release.ps1` (`32 passed`, backend compile, frontend text health, route smoke, frontend build).
 - 2026-05-26: Browser-smoked `/admin/ai-agents`; the page rendered normal Chinese text, local contract panel, and 4 AI agent rows matching the backend API.
+- 2026-05-26: Added AI contract copy regression coverage so `/api/v1/ai/contracts` keeps human-facing names, thinking steps, and adoption rules in Chinese.
+- 2026-05-26: Localized provider-neutral AI contract display text while preserving stable `scenario`, `code`, `percent`, input contract, and output contract fields.
+- 2026-05-26: Verified AI contract copy target with `python -m pytest backend/tests/test_ai_contract_progress.py -q` (`3 passed`).

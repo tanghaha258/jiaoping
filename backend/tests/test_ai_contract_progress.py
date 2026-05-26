@@ -28,6 +28,43 @@ def test_ai_contracts_expose_lesson_plan_shape():
     assert lesson_contract["thinking_steps"][0]["code"] == "understanding"
 
 
+def test_ai_contracts_use_chinese_display_copy():
+    english_placeholders = [
+        "AI lesson-plan workflow",
+        "Learning diagnosis",
+        "Rubric generation",
+        "Resource recommendation",
+        "Teaching reflection",
+        "Teacher adoption",
+        "Await teacher review",
+        "Understand teaching request",
+    ]
+
+    with TestClient(app) as client:
+        headers = _login_teacher(client)
+
+        response = client.get("/api/v1/ai/contracts", headers=headers)
+
+    assert response.status_code == 200
+    contracts = response.json()["data"]["items"]
+    assert contracts
+
+    for contract in contracts:
+        display_text = " ".join(
+            [
+                contract["name"],
+                contract["adoption_rule"],
+                *[step["title"] for step in contract["thinking_steps"]],
+                *[step.get("description", "") for step in contract["thinking_steps"]],
+            ]
+        )
+        assert any("\u4e00" <= char <= "\u9fff" for char in contract["name"])
+        assert any("\u4e00" <= char <= "\u9fff" for char in contract["adoption_rule"])
+        assert all(any("\u4e00" <= char <= "\u9fff" for char in step["title"]) for step in contract["thinking_steps"])
+        for phrase in english_placeholders:
+            assert phrase not in display_text
+
+
 def test_lesson_plan_draft_records_thinking_progress():
     with TestClient(app) as client:
         headers = _login_teacher(client)
