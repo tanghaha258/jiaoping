@@ -2,9 +2,9 @@
   <div class="agent-page">
     <section class="page-head">
       <div>
-        <span class="eyebrow">AI Agent Admin</span>
-        <h1>AI智能体配置</h1>
-        <p>维护本地智能体契约、Provider配置和业务场景启用状态。</p>
+        <span class="eyebrow">AI智能体治理</span>
+        <h1>AI智能体与契约治理</h1>
+        <p>统一维护本地契约层、Provider适配和教师采纳门槛，让桂教通、Mock、本地模型预留能力后续都能接入同一套业务闭环。</p>
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" :loading="loading" @click="loadAll">刷新</el-button>
@@ -23,7 +23,36 @@
       </div>
       <div class="summary-item">
         <strong>{{ contracts.length }}</strong>
-        <span>本地契约</span>
+        <span>本地契约层</span>
+      </div>
+      <div class="summary-item">
+        <strong>{{ providerModeCount }}</strong>
+        <span>Provider适配</span>
+      </div>
+    </section>
+
+    <section class="governance-strip">
+      <div class="governance-item">
+        <span>本地契约层</span>
+        <strong>业务工作流只认标准 JSON 输入输出</strong>
+        <p>桂教通、Mock 或后续本地模型都要转换为同一份场景契约。</p>
+      </div>
+      <div class="governance-item">
+        <span>Provider适配</span>
+        <strong>外部能力只做适配，不绑死平台核心</strong>
+        <p>当前可用 Mock开发模式，桂教通预留、本地模型预留按同一网关扩展。</p>
+      </div>
+      <div class="governance-item">
+        <span>教师采纳门槛</span>
+        <strong>AI 结果必须经教师确认后进入业务数据</strong>
+        <p>生成内容先形成草案、思考进度和调用记录，不直接发布给学生。</p>
+      </div>
+    </section>
+
+    <section class="provider-band">
+      <div v-for="item in providerStatusCards" :key="item.label" class="provider-status">
+        <el-tag :type="item.type" effect="light">{{ item.label }}</el-tag>
+        <span>{{ item.description }}</span>
       </div>
     </section>
 
@@ -54,7 +83,7 @@
           </el-table-column>
           <el-table-column label="Provider" width="130">
             <template #default="{ row }">
-              <el-tag effect="light">{{ providerText(row.provider) }}</el-tag>
+              <el-tag :type="providerTagType(row.provider)" effect="light">{{ providerText(row.provider) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="模型/端点" min-width="170">
@@ -90,6 +119,11 @@
               </el-tooltip>
             </template>
           </el-table-column>
+          <template #empty>
+            <el-empty description="暂无智能体配置">
+              <el-button type="primary" :icon="Plus" @click="openCreate">新建智能体</el-button>
+            </el-empty>
+          </template>
         </el-table>
 
         <div class="pagination-row">
@@ -106,8 +140,9 @@
       <aside class="contract-panel">
         <div class="panel-title">
           <el-icon><Document /></el-icon>
-          <span>本地契约</span>
+          <span>本地契约层</span>
         </div>
+        <p class="panel-intro">场景契约定义输入、输出、思考进度和采纳规则，是后续接入桂教通或本地模型的稳定接口。</p>
         <div class="contract-list">
           <button
             v-for="contract in contracts"
@@ -122,11 +157,25 @@
           </button>
         </div>
         <div v-if="selectedContract" class="contract-detail">
-          <p>{{ selectedContract.adoption_rule }}</p>
+          <div class="contract-meta">
+            <span>Provider适配</span>
+            <div>
+              <el-tag v-for="mode in selectedContract.provider_modes" :key="mode" size="small" effect="light">
+                {{ providerText(mode) }}
+              </el-tag>
+            </div>
+          </div>
+          <div class="contract-meta">
+            <span>教师采纳门槛</span>
+            <p>{{ selectedContract.adoption_rule }}</p>
+          </div>
           <div class="step-list">
             <div v-for="step in selectedContract.thinking_steps" :key="step.code">
               <span>{{ step.percent }}%</span>
-              <strong>{{ step.title }}</strong>
+              <div>
+                <strong>{{ step.title }}</strong>
+                <p>{{ step.description }}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -144,6 +193,10 @@
             {{ selectedAgent.enabled ? '已启用' : '已停用' }}
           </el-tag>
         </div>
+        <div class="detail-section">
+          <h3>Provider配置</h3>
+          <p class="muted">这里保存的是适配信息和非敏感参数；密钥、Token 等敏感值应放在后端环境变量或 Provider 服务端配置中。</p>
+        </div>
         <el-descriptions :column="1" border>
           <el-descriptions-item label="模型">{{ selectedAgent.config?.model || '未配置' }}</el-descriptions-item>
           <el-descriptions-item label="端点">{{ selectedAgent.config?.endpoint || '未配置' }}</el-descriptions-item>
@@ -152,9 +205,28 @@
             {{ selectedAgent.config?.timeout_seconds || 30 }} 秒 / {{ selectedAgent.config?.max_retries || 1 }} 次
           </el-descriptions-item>
         </el-descriptions>
+        <div class="detail-section" v-if="activeContract">
+          <h3>思考进度</h3>
+          <div class="step-list compact">
+            <div v-for="step in activeContract.thinking_steps" :key="step.code">
+              <span>{{ step.percent }}%</span>
+              <div>
+                <strong>{{ step.title }}</strong>
+                <p>{{ step.description }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="detail-section" v-if="activeContract">
+          <h3>采纳规则</h3>
+          <p class="muted">{{ activeContract.adoption_rule }}</p>
+        </div>
         <div class="json-block">
           <strong>Provider扩展配置</strong>
           <pre>{{ prettyJson(selectedAgent.config?.extra || {}) }}</pre>
+        </div>
+        <div class="detail-section">
+          <h3>调用契约</h3>
         </div>
         <div class="json-block">
           <strong>输入契约</strong>
@@ -184,6 +256,7 @@
             <el-select v-model="form.provider" @change="syncProvider">
               <el-option v-for="item in providerOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
+            <div class="form-help">Provider 只负责适配外部能力，输出仍需转换成本地契约结构。</div>
           </el-form-item>
           <el-form-item label="启用状态">
             <el-switch v-model="form.enabled" />
@@ -216,10 +289,11 @@
           type="info"
           show-icon
           :closable="false"
-          title="桂教通字段目前只做占位保存：endpoint、auth_type、extra，不在前端直接暴露密钥。"
+          title="桂教通预留字段目前只保存 endpoint、auth_type、extra 等非敏感配置；密钥不要写入浏览器可见 JSON。"
         />
         <el-form-item label="Provider扩展配置 JSON">
           <el-input v-model="extraText" type="textarea" :rows="4" />
+          <div class="form-help">可放 agent_id、租户标识、模型别名等非密钥字段；正式对接桂教通时由后端 Provider 读取环境变量完成认证。</div>
         </el-form-item>
         <div class="two-cols">
           <el-form-item label="输入 Schema JSON">
@@ -263,6 +337,13 @@ const providerOptions: { label: string; value: Provider }[] = [
   { label: '人工导入', value: 'manual_import' }
 ]
 
+const providerStatusCards = [
+  { label: 'Mock开发模式', description: '用于开发、演示和无外网部署的稳定兜底。', type: 'success' },
+  { label: '桂教通预留', description: '后续接入比赛智能体 API，仍输出本地标准契约。', type: 'warning' },
+  { label: '本地模型预留', description: '未来可接 OpenAI 兼容或校内部署模型。', type: 'info' },
+  { label: '人工导入', description: '支持线下智能体结果手工入库并走审核采纳。', type: 'info' }
+] as const
+
 const loading = ref(false)
 const saving = ref(false)
 const switchingId = ref('')
@@ -298,6 +379,7 @@ const form = reactive<AIAgentMutation>({
 })
 
 const enabledCount = computed(() => agents.value.filter(item => item.enabled).length)
+const providerModeCount = computed(() => providerStatusCards.length)
 const selectedContract = computed(() => contracts.value.find(item => item.scenario === selectedContractScenario.value))
 const activeContract = computed(() => selectedAgent.value ? contracts.value.find(item => item.scenario === selectedAgent.value?.scenario) : null)
 
@@ -474,6 +556,12 @@ function providerText(value: string) {
   return providerOptions.find(item => item.value === value)?.label || value
 }
 
+function providerTagType(value: string) {
+  if (value === 'mock') return 'success'
+  if (value === 'gjt_api' || value === 'gjt_link') return 'warning'
+  return 'info'
+}
+
 function prettyJson(value: unknown) {
   return JSON.stringify(value || {}, null, 2)
 }
@@ -527,7 +615,7 @@ onMounted(loadAll)
 
 .summary-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -554,9 +642,67 @@ onMounted(loadAll)
   color: #64748b;
 }
 
+.governance-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.governance-item,
+.provider-status {
+  border: 1px solid #e5edf7;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.governance-item {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.governance-item span {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.governance-item strong {
+  color: #1f3356;
+  font-size: 15px;
+}
+
+.governance-item p,
+.panel-intro,
+.contract-meta p,
+.step-list p,
+.form-help {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.provider-band {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.provider-status {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.provider-status span:last-child {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 16px;
 }
 
@@ -633,13 +779,31 @@ onMounted(loadAll)
   font-size: 12px;
 }
 
+.contract-meta {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #edf2f7;
+}
+
+.contract-meta > span {
+  color: #1f3356;
+  font-weight: 700;
+}
+
+.contract-meta > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .step-list {
   display: grid;
   gap: 8px;
   margin-top: 12px;
 }
 
-.step-list div {
+.step-list > div {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
   gap: 8px;
@@ -651,9 +815,29 @@ onMounted(loadAll)
   font-weight: 700;
 }
 
+.step-list strong {
+  color: #1f3356;
+}
+
+.step-list.compact {
+  margin-top: 0;
+}
+
 .detail-head {
   align-items: flex-start;
   margin-bottom: 16px;
+}
+
+.detail-section {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.detail-section h3 {
+  margin: 0;
+  color: #1f3356;
+  font-size: 15px;
 }
 
 .json-block {
@@ -669,6 +853,11 @@ onMounted(loadAll)
   border-radius: 8px;
   background: #f8fafc;
   color: #334155;
+  font-size: 12px;
+}
+
+.form-help {
+  margin-top: 6px;
   font-size: 12px;
 }
 
@@ -692,7 +881,9 @@ onMounted(loadAll)
 
 @media (max-width: 1100px) {
   .content-grid,
-  .summary-row {
+  .summary-row,
+  .governance-strip,
+  .provider-band {
     grid-template-columns: 1fr;
   }
 }
@@ -702,7 +893,8 @@ onMounted(loadAll)
   .head-actions,
   .toolbar,
   .two-cols,
-  .three-cols {
+  .three-cols,
+  .provider-status {
     display: grid;
     width: 100%;
   }

@@ -69,6 +69,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Added static route smoke checks for core admin, teacher, student, and research pages.
   - [x] Added route smoke release check.
   - [x] Localized AI contract names, thinking steps, and adoption rules for admin-facing contract panels.
+  - [x] Polished admin AI agent governance page with provider-neutral contract copy, Provider adapter statuses, teacher adoption gate, and detail/form guidance.
   - [ ] Continue page-by-page browser smoke and visual polish.
 - [ ] Phase 10: Build provider-neutral AI contract foundation.
   - [ ] Keep GJT as a provider adapter, not the platform core.
@@ -167,3 +168,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-26: Added AI contract copy regression coverage so `/api/v1/ai/contracts` keeps human-facing names, thinking steps, and adoption rules in Chinese.
 - 2026-05-26: Localized provider-neutral AI contract display text while preserving stable `scenario`, `code`, `percent`, input contract, and output contract fields.
 - 2026-05-26: Verified AI contract copy target with `python -m pytest backend/tests/test_ai_contract_progress.py -q` (`3 passed`).
+- 2026-05-26: Added AI agent page polish regression test and expanded route smoke anchors for `AI智能体治理`, `本地契约层`, and `Provider适配`.
+- 2026-05-26: Reworked `/admin/ai-agents` into a provider-neutral AI governance console with local contract layer explanation, Provider adapter status cards, teacher adoption gate copy, richer contract panel, detail drawer sections, and safer GJT reserved-field guidance.
+- 2026-05-26: Verified AI agent page polish with `python -m pytest backend/tests/test_ai_agent_page_polish.py backend/tests/test_frontend_route_smoke.py backend/tests/test_frontend_text_health.py -q` (`7 passed`) and `scripts/check-release.ps1` (`34 passed`, backend compile, frontend text health, route smoke, frontend build).
+- 2026-05-26: Browser-smoked `/admin/ai-agents`; the page displayed `AI智能体治理`, `本地契约层`, `Provider适配`, `教师采纳门槛`, `桂教通预留`, `Mock开发模式`, and `本地模型预留`, with `AI Agent Admin` absent.
