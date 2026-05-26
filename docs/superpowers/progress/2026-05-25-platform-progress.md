@@ -61,6 +61,15 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Added readiness items for service, organization data, users, AI contract, workflow, student tasks, resources, and backup path.
   - [x] Added SQLite backup and guarded restore scripts.
   - [x] Added admin dashboard readiness panel with quick actions.
+- [x] Phase 9: Start page polish and automatic smoke baseline.
+  - [x] Added Phase 9 page polish and text-health design.
+  - [x] Added Phase 9 implementation plan.
+  - [x] Added frontend UTF-8 text-health regression tests.
+  - [x] Added frontend text-health release check.
+  - [ ] Continue page-by-page browser smoke and visual polish.
+- [ ] Phase 10: Build provider-neutral AI contract foundation.
+  - [ ] Keep GJT as a provider adapter, not the platform core.
+  - [ ] Harden local scenario contracts, provider adapters, progress events, adoption gates, and error metadata.
 
 ## Decisions
 
@@ -73,6 +82,8 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - User account import is additive and non-destructive: existing usernames are skipped, existing passwords are never exported, and initial passwords are only returned for accounts created by the current import.
 - Trial readiness is computed from live operational data and shown as a checklist; blocking setup gaps are errors, while project/task/resource gaps are warnings that guide trial preparation.
 - Local SQLite backup uses timestamped file copies, and restore creates a pre-restore safety backup by default.
+- Frontend text checks must read files as UTF-8 directly. PowerShell `Get-Content` can display Chinese as mojibake in this environment, so terminal rendering alone is not accepted as evidence of source corruption.
+- Phase 10 AI architecture remains provider-neutral: GJT is needed for the competition integration, while local contracts must also support mock, local model, and OpenAI-compatible providers later.
 
 ## Completed Work
 
@@ -140,3 +151,8 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-25: Rebuilt admin dashboard with clean Chinese copy and a trial readiness checklist panel; verified with `npm run build`.
 - 2026-05-25: Verified Phase 8 with `python -m pytest backend/tests/test_trial_readiness.py -q` (`4 passed`) and `scripts/check-release.ps1` (`26 passed`, backend compile, frontend build).
 - 2026-05-25: Edge-smoked `/admin` as system admin; readiness API returned `ready` with 8 items and the page rendered the checklist with no empty-state fallback.
+- 2026-05-26: Started Phase 9 page polish and smoke baseline after confirming UTF-8 source text is mostly healthy despite PowerShell display mojibake.
+- 2026-05-26: Added `docs/superpowers/specs/2026-05-26-page-polish-smoke-design.md` and `docs/superpowers/plans/2026-05-26-page-polish-smoke.md`.
+- 2026-05-26: Added `backend/tests/test_frontend_text_health.py`; verified red state first with missing script/release integration failures.
+- 2026-05-26: Added `scripts/check_frontend_text_health.py` and wired it into `scripts/check-release.ps1`.
+- 2026-05-26: Verified Phase 9 text-health target with `python -m pytest backend/tests/test_frontend_text_health.py -q` (`3 passed`).

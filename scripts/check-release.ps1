@@ -8,6 +8,9 @@ python -m pytest backend/tests -q
 Write-Host "Compiling backend..."
 python -m compileall backend\app
 
+Write-Host "Checking frontend text health..."
+python scripts\check_frontend_text_health.py
+
 Write-Host "Building frontend..."
 Set-Location (Join-Path $Root "frontend")
 npm run build
