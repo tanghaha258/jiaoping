@@ -109,6 +109,31 @@ export interface AICallProgress {
   steps: AICallProgressStep[]
 }
 
+export interface AICallDiagnosticMetadata {
+  error_code?: string
+  error_category?: string
+  provider?: string
+  scenario?: string
+  retryable?: boolean
+  remediation?: string
+  upstream_status?: string | number | null
+  safe_metadata?: Record<string, any>
+}
+
+export interface AICallDiagnosticsSummary {
+  total_failed: number
+  by_category: { category: string; count: number }[]
+  by_provider: { provider: string; count: number }[]
+  recent_failures: {
+    id: string
+    provider: string
+    scenario: string
+    error_category: string
+    error_message?: string | null
+    created_at?: string | null
+  }[]
+}
+
 export interface AICallItem {
   id: string
   project_id?: string
@@ -121,6 +146,8 @@ export interface AICallItem {
   status: string
   review_status?: string
   error_message?: string | null
+  diagnostic_metadata?: AICallDiagnosticMetadata
+  error_category?: string | null
   input_summary?: string | null
   output_summary?: string | null
   created_at: string
@@ -299,6 +326,10 @@ export function getAICall(id: string): Promise<ApiResponse<AICallItem>> {
 
 export function getAICallProgress(id: string): Promise<ApiResponse<AICallProgress>> {
   return request.get(`/ai/calls/${id}/progress`)
+}
+
+export function getAICallDiagnosticsSummary(): Promise<ApiResponse<AICallDiagnosticsSummary>> {
+  return request.get('/ai/calls/diagnostics/summary')
 }
 
 export function createAICall(

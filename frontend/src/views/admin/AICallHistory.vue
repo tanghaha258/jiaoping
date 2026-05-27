@@ -28,6 +28,26 @@
       </div>
     </section>
 
+    <section class="diagnostics-row">
+      <div class="summary-item">
+        <strong>{{ diagnosticsSummary?.total_failed || 0 }}</strong>
+        <span>失败诊断</span>
+      </div>
+      <div class="summary-item">
+        <strong>{{ topFailureCategoryLabel }}</strong>
+        <span>最高失败类别</span>
+      </div>
+      <div class="summary-item">
+        <strong>{{ affectedProviderCount }}</strong>
+        <span>受影响 Provider</span>
+      </div>
+      <div class="summary-item recent-failures">
+        <strong>近期失败</strong>
+        <span v-if="recentFailureText">{{ recentFailureText }}</span>
+        <span v-else>暂无失败记录</span>
+      </div>
+    </section>
+
     <section class="observability-strip">
       <div class="observability-item">
         <span>调用链路</span>
@@ -59,6 +79,9 @@
           <el-select v-model="filters.status" clearable placeholder="调用状态" class="filter" @change="reloadFirstPage">
             <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
+          <el-select v-model="filters.error_category" clearable placeholder="失败类别" class="filter" @change="reloadFirstPage">
+            <el-option v-for="item in errorCategoryOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
         </div>
       </div>
 
@@ -82,6 +105,12 @@
         <el-table-column label="调用状态" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.status)" effect="light">{{ statusText(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="失败类别" width="150" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.error_category" type="danger" effect="light">{{ errorCategoryText(row.error_category) }}</el-tag>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column label="采纳状态" width="130" align="center">
@@ -179,7 +208,26 @@
         </section>
 
         <section class="detail-section">
-          <h3>错误排查</h3>
+          <h3>失败诊断</h3>
+          <div v-if="hasSelectedDiagnostics" class="diagnostic-panel">
+            <div>
+              <span>失败类别</span>
+              <strong>{{ errorCategoryText(selectedErrorCategory) }}</strong>
+            </div>
+            <div>
+              <span>可重试</span>
+              <strong>{{ retryableText(selectedDiagnostics.retryable) }}</strong>
+            </div>
+            <div>
+              <span>处理建议</span>
+              <strong>{{ selectedDiagnostics.remediation || selected.error_message || '查看 Provider 配置和调用记录后处理。' }}</strong>
+            </div>
+            <div>
+              <span>上游状态</span>
+              <strong>{{ selectedDiagnostics.upstream_status ?? '-' }}</strong>
+            </div>
+            <pre v-if="hasSelectedSafeMetadata" class="json-block compact">{{ prettyJson(selectedSafeMetadata) }}</pre>
+          </div>
           <el-alert
             v-if="selected.error_message"
             type="error"
@@ -215,8 +263,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { getAdminAICalls } from '@/api/admin'
-import { getAICallProgress } from '@/api/ai'
-import type { AICallItem, AICallProgress } from '@/api/ai'
+import { getAICallDiagnosticsSummary, getAICallProgress } from '@/api/ai'
+import type { AICallDiagnosticMetadata, AICallDiagnosticsSummary, AICallItem, AICallProgress } from '@/api/ai'
 
 const scenarioOptions = [
   { label: 'AI教学方案', value: 'lesson_plan' },
@@ -243,31 +291,66 @@ const statusOptions = [
   { label: '失败', value: 'failed' }
 ]
 
+const errorCategoryOptions = [
+  { label: '配置缺失', value: 'configuration_missing' },
+  { label: 'Provider未支持', value: 'provider_unsupported' },
+  { label: '上游不可达', value: 'upstream_unreachable' },
+  { label: '上游超时', value: 'upstream_timeout' },
+  { label: '上游响应异常', value: 'upstream_bad_response' },
+  { label: '契约校验失败', value: 'contract_validation_failed' },
+  { label: '未知错误', value: 'unknown_error' }
+]
+
 const calls = ref<AICallItem[]>([])
 const selected = ref<AICallItem | null>(null)
 const progress = ref<AICallProgress | null>(null)
+const diagnosticsSummary = ref<AICallDiagnosticsSummary | null>(null)
 const loading = ref(false)
 const progressLoading = ref(false)
 const detailVisible = ref(false)
-const filters = reactive({ scenario: '', provider: '', status: '' })
+const filters = reactive({ scenario: '', provider: '', status: '', error_category: '' })
 const pagination = reactive({ page: 1, pageSize: 20, total: 0 })
 
 const succeededCount = computed(() => calls.value.filter(item => item.status === 'succeeded').length)
 const adoptedCount = computed(() => calls.value.filter(item => item.status === 'adopted').length)
 const failedCount = computed(() => calls.value.filter(item => item.status === 'failed').length)
+const affectedProviderCount = computed(() => diagnosticsSummary.value?.by_provider.length || 0)
+const topFailureCategoryLabel = computed(() => {
+  const top = diagnosticsSummary.value?.by_category[0]
+  return top ? `${errorCategoryText(top.category)} ${top.count}` : '-'
+})
+const recentFailureText = computed(() => {
+  const item = diagnosticsSummary.value?.recent_failures[0]
+  if (!item) return ''
+  return `${providerText(item.provider)} / ${errorCategoryText(item.error_category)} / ${formatDate(item.created_at)}`
+})
+const selectedDiagnostics = computed<AICallDiagnosticMetadata>(() => selected.value?.diagnostic_metadata || {})
+const selectedErrorCategory = computed(() => selected.value?.error_category || selectedDiagnostics.value.error_category || '')
+const hasSelectedDiagnostics = computed(() => Boolean(
+  selectedErrorCategory.value ||
+  selectedDiagnostics.value.remediation ||
+  selected.value?.error_message
+))
+const selectedSafeMetadata = computed(() => selectedDiagnostics.value.safe_metadata || {})
+const hasSelectedSafeMetadata = computed(() => Object.keys(selectedSafeMetadata.value).length > 0)
 
 async function loadCalls() {
   loading.value = true
   try {
-    const res = await getAdminAICalls({
-      page: pagination.page,
-      page_size: pagination.pageSize,
-      scenario: filters.scenario || undefined,
-      provider: filters.provider || undefined,
-      status: filters.status || undefined
-    })
-    calls.value = res.data.items || []
-    pagination.total = res.data.total || 0
+    const [callsRes, summaryRes] = await Promise.all([
+      getAdminAICalls({
+        page: pagination.page,
+        page_size: pagination.pageSize,
+        scenario: filters.scenario || undefined,
+        provider: filters.provider || undefined,
+        status: filters.status || undefined,
+        error_category: filters.error_category || undefined
+      }),
+      getAICallDiagnosticsSummary()
+    ])
+    calls.value = callsRes.data.items || []
+    pagination.total = callsRes.data.total || 0
+    diagnosticsSummary.value = summaryRes.data
   } finally {
     loading.value = false
   }
@@ -308,6 +391,16 @@ function providerText(value?: string) {
 
 function statusText(value?: string) {
   return statusOptions.find(item => item.value === value)?.label || value || '-'
+}
+
+function errorCategoryText(value?: string | null) {
+  return errorCategoryOptions.find(item => item.value === value)?.label || value || '-'
+}
+
+function retryableText(value?: boolean) {
+  if (value === true) return '可重试'
+  if (value === false) return '不可重试'
+  return '-'
 }
 
 function stepStatusText(value?: string) {
@@ -427,10 +520,17 @@ onMounted(loadCalls)
   gap: 12px;
 }
 
+.diagnostics-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .summary-item {
   display: grid;
   gap: 4px;
   padding: 16px;
+  min-width: 0;
 }
 
 .summary-item strong {
@@ -440,6 +540,13 @@ onMounted(loadCalls)
 
 .summary-item span {
   color: #64748b;
+}
+
+.recent-failures strong,
+.recent-failures span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .observability-strip {
@@ -574,6 +681,35 @@ onMounted(loadCalls)
   color: #1f3356;
 }
 
+.diagnostic-panel {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #fee2e2;
+  border-radius: 8px;
+  background: #fff7f7;
+}
+
+.diagnostic-panel > div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.diagnostic-panel span {
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.diagnostic-panel strong {
+  min-width: 0;
+  color: #334155;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 .json-block {
   max-height: 260px;
   overflow: auto;
@@ -584,8 +720,14 @@ onMounted(loadCalls)
   font-size: 12px;
 }
 
+.json-block.compact {
+  max-height: 180px;
+  margin: 0;
+}
+
 @media (max-width: 1100px) {
   .summary-row,
+  .diagnostics-row,
   .observability-strip {
     grid-template-columns: 1fr;
   }

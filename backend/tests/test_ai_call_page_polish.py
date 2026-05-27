@@ -19,3 +19,13 @@ def test_ai_call_page_explains_observability_loop():
     ]:
         assert label in text
 
+    for label in [
+        "失败诊断",
+        "失败类别",
+        "可重试",
+        "处理建议",
+        "近期失败",
+        "diagnostic_metadata",
+        "getAICallDiagnosticsSummary",
+    ]:
+        assert label in text

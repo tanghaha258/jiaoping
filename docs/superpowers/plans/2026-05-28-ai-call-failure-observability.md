@@ -387,7 +387,7 @@ Observed 2026-05-28: implemented together with Task 2 backend diagnostics in one
 - Modify: `backend/tests/test_frontend_route_smoke.py`
 - Modify: `docs/superpowers/plans/2026-05-28-ai-call-failure-observability.md`
 
-- [ ] **Step 1: Write failing frontend static anchors**
+- [x] **Step 1: Write failing frontend static anchors**
 
 Extend `test_ai_call_page_polish.py` to require:
 
@@ -401,7 +401,7 @@ Extend `test_ai_call_page_polish.py` to require:
 "getAICallDiagnosticsSummary"
 ```
 
-- [ ] **Step 2: Verify red state**
+- [x] **Step 2: Verify red state**
 
 Run:
 
@@ -411,7 +411,9 @@ python -m pytest backend/tests/test_ai_call_page_polish.py -q
 
 Expected: fail because the page and API types do not contain the new diagnostics anchors yet.
 
-- [ ] **Step 3: Add TypeScript API types and call**
+Observed 2026-05-28: `python -m pytest backend/tests/test_ai_call_page_polish.py -q` failed as expected because `失败诊断` and related diagnostics anchors were not present yet.
+
+- [x] **Step 3: Add TypeScript API types and call**
 
 Extend `AICallItem` and add:
 
@@ -446,7 +448,7 @@ export function getAICallDiagnosticsSummary(): Promise<ApiResponse<AICallDiagnos
 }
 ```
 
-- [ ] **Step 4: Add admin list filter param**
+- [x] **Step 4: Add admin list filter param**
 
 Extend `getAdminAICalls` params with:
 
@@ -454,7 +456,7 @@ Extend `getAdminAICalls` params with:
 error_category?: string
 ```
 
-- [ ] **Step 5: Render AI call diagnostics UI**
+- [x] **Step 5: Render AI call diagnostics UI**
 
 Update `AICallHistory.vue`:
 
@@ -464,7 +466,7 @@ Update `AICallHistory.vue`:
 - add summary cards for total failures, top failure category, affected providers, and recent failures;
 - replace drawer plain error alert with a diagnosis panel showing category, retryable, remediation, upstream status, and safe metadata.
 
-- [ ] **Step 6: Verify frontend static and build**
+- [x] **Step 6: Verify frontend static and build**
 
 Run:
 
@@ -476,6 +478,8 @@ cd ..
 ```
 
 Expected: tests and build pass.
+
+Observed 2026-05-28: `python -m pytest backend/tests/test_ai_call_page_polish.py backend/tests/test_frontend_route_smoke.py backend/tests/test_frontend_text_health.py -q` passed (`7 passed`, 1 warning), and `npm run build` passed.
 
 - [ ] **Step 7: Commit frontend UI**
 

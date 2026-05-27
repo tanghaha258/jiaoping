@@ -348,6 +348,7 @@ export function getAdminAICalls(params?: {
   provider?: string
   status?: string
   review_status?: string
+  error_category?: string
 }): Promise<ApiResponse<PaginatedData<AICallItem>>> {
   return request.get('/ai/calls', { params })
 }
