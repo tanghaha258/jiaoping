@@ -174,7 +174,7 @@ async def list_agents(
 async def create_agent(
     body: AIAgentCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "school_admin", "super_admin")),
+    current_user: User = Depends(require_roles("system_admin", "school_admin", "admin", "super_admin")),
 ):
     """
     创建AI智能体配置（管理员操作）。
@@ -212,7 +212,7 @@ async def update_agent(
     agent_id: UUID,
     body: AIAgentUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "school_admin", "super_admin")),
+    current_user: User = Depends(require_roles("system_admin", "school_admin", "admin", "super_admin")),
 ):
     """
     更新AI智能体配置（管理员操作）。
@@ -237,7 +237,7 @@ async def update_agent(
 async def delete_agent(
     agent_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "school_admin", "super_admin")),
+    current_user: User = Depends(require_roles("system_admin", "school_admin", "admin", "super_admin")),
 ):
     """Soft-delete an AI agent configuration."""
     service = get_service()

@@ -91,6 +91,8 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 
 ## Completed Work
 
+- 2026-05-27: Started AI provider readiness Task 1 using the superpowers executing-plans/TDD flow. Added backend readiness tests covering system-admin agent creation, `ready`, `not_configured`, `manual_required`, `unsupported`, school-admin access, teacher blocking, and missing-agent 404. Verified the red state with `python -m pytest backend/tests/test_ai_provider_readiness.py -q` (`4 failed`) because `/api/v1/ai/agents/{agent_id}/readiness` is not routed yet.
+
 - 2026-05-25: Added local AI scenario contracts through `/api/v1/ai/contracts`.
 - 2026-05-25: Added `AICallStep` and `/api/v1/ai/calls/{call_id}/progress` for agent thinking/progress tracking.
 - 2026-05-25: Lesson-plan draft generation now records the five standard thinking steps: understanding, retrieving_context, drafting, normalizing, awaiting_review.
