@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     GJT_AGENT_ID: str = ""
     GJT_API_TIMEOUT_SECONDS: int = 30
 
+    # Domestic OpenAI-compatible AI gateways. Provider-specific agent config can
+    # override these values, while secrets should remain in environment vars.
+    OPENAI_COMPATIBLE_API_BASE_URL: str = ""
+    OPENAI_COMPATIBLE_API_KEY: str = ""
+    OPENAI_COMPATIBLE_MODEL: str = ""
+    OPENAI_COMPATIBLE_TIMEOUT_SECONDS: int = 60
+
     # CORS
     CORS_ORIGINS: list[str] = ["*"]
 

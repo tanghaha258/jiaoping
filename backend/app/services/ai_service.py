@@ -25,7 +25,7 @@ from uuid import UUID
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.ai_schemas import AI_AGENT_CONTRACTS
+from app.core.ai_schemas import AI_AGENT_CONTRACTS, AI_PROVIDER_MODES
 from app.core.exceptions import (
     AIProviderUnavailableException,
     InvalidStateTransitionException,
@@ -52,7 +52,7 @@ VALID_SCENARIOS = {
     "teaching_reflection",
 }
 
-VALID_PROVIDERS = {"gjt_api", "gjt_link", "manual_import", "mock"}
+VALID_PROVIDERS = set(AI_PROVIDER_MODES)
 
 ADOPTABLE_TARGET_TYPES = {"project_lesson", "task", "rubric", "evaluation", "resource"}
 

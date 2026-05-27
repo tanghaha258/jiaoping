@@ -40,7 +40,7 @@
       <div class="governance-item">
         <span>Provider适配</span>
         <strong>外部能力只做适配，不绑死平台核心</strong>
-        <p>当前可用 Mock开发模式，桂教通预留、本地模型预留按同一网关扩展。</p>
+        <p>当前可用 Mock开发模式，桂教通预留、国内智能体预设和本地模型预留按同一网关扩展。</p>
       </div>
       <div class="governance-item">
         <span>教师采纳门槛</span>
@@ -270,6 +270,10 @@
             <el-input v-model="form.config.endpoint" placeholder="预留给桂教通 API" />
           </el-form-item>
         </div>
+        <el-form-item label="密钥环境变量名">
+          <el-input v-model="form.config.api_key_env" placeholder="例如 OPENAI_COMPATIBLE_API_KEY，不填写真实密钥" />
+          <div class="form-help">国内智能体和本地网关建议只保存环境变量名；真实 API Key 放在后端 .env 或部署平台密钥中。</div>
+        </el-form-item>
         <div class="three-cols">
           <el-form-item label="认证方式">
             <el-select v-model="form.config.auth_type" clearable placeholder="未配置">
@@ -289,7 +293,7 @@
           type="info"
           show-icon
           :closable="false"
-          title="桂教通预留字段目前只保存 endpoint、auth_type、extra 等非敏感配置；密钥不要写入浏览器可见 JSON。"
+          title="桂教通和国内智能体 Provider 只保存 endpoint、model、api_key_env、extra 等非敏感配置；真实密钥不要写入浏览器可见 JSON。"
         />
         <el-form-item label="Provider扩展配置 JSON">
           <el-input v-model="extraText" type="textarea" :rows="4" />
@@ -333,6 +337,14 @@ const scenarioOptions = [
 const providerOptions: { label: string; value: Provider }[] = [
   { label: 'Mock 本地', value: 'mock' },
   { label: '桂教通 API', value: 'gjt_api' },
+  { label: 'OpenAI兼容本地网关', value: 'openai_compatible_local' },
+  { label: '通义千问', value: 'qwen_agent' },
+  { label: 'DeepSeek', value: 'deepseek_agent' },
+  { label: '智谱GLM', value: 'zhipu_agent' },
+  { label: '豆包', value: 'doubao_agent' },
+  { label: '百度千帆', value: 'qianfan_agent' },
+  { label: '讯飞星火', value: 'spark_agent' },
+  { label: 'Kimi', value: 'kimi_agent' },
   { label: '桂教通链接', value: 'gjt_link' },
   { label: '人工导入', value: 'manual_import' }
 ]
@@ -340,9 +352,21 @@ const providerOptions: { label: string; value: Provider }[] = [
 const providerStatusCards = [
   { label: 'Mock开发模式', description: '用于开发、演示和无外网部署的稳定兜底。', type: 'success' },
   { label: '桂教通预留', description: '后续接入比赛智能体 API，仍输出本地标准契约。', type: 'warning' },
-  { label: '本地模型预留', description: '未来可接 OpenAI 兼容或校内部署模型。', type: 'info' },
+  { label: '国内智能体预设', description: '通义千问、DeepSeek、智谱GLM、豆包、百度千帆、讯飞星火、Kimi 统一走本地契约。', type: 'warning' },
+  { label: '本地模型预留', description: '可接 OpenAI兼容本地网关或校内部署模型。', type: 'info' },
   { label: '人工导入', description: '支持线下智能体结果手工入库并走审核采纳。', type: 'info' }
 ] as const
+
+const domesticProviderValues = new Set<Provider>([
+  'openai_compatible_local',
+  'qwen_agent',
+  'deepseek_agent',
+  'zhipu_agent',
+  'doubao_agent',
+  'qianfan_agent',
+  'spark_agent',
+  'kimi_agent'
+])
 
 const loading = ref(false)
 const saving = ref(false)
@@ -386,13 +410,28 @@ const activeContract = computed(() => selectedAgent.value ? contracts.value.find
 function makeDefaultConfig(provider: Provider): AgentConfig {
   return {
     provider,
-    model: provider === 'mock' ? 'mock' : null,
+    model: provider === 'mock' ? 'mock' : defaultModel(provider),
     endpoint: null,
     auth_type: null,
+    api_key_env: domesticProviderValues.has(provider) ? 'OPENAI_COMPATIBLE_API_KEY' : null,
     timeout_seconds: 30,
     max_retries: 1,
     extra: {}
   }
+}
+
+function defaultModel(provider: Provider) {
+  const modelMap: Partial<Record<Provider, string>> = {
+    openai_compatible_local: 'local-json-agent',
+    qwen_agent: 'qwen-plus',
+    deepseek_agent: 'deepseek-chat',
+    zhipu_agent: 'glm-4',
+    doubao_agent: 'doubao-pro',
+    qianfan_agent: 'ernie-4.0',
+    spark_agent: 'spark-max',
+    kimi_agent: 'moonshot-v1'
+  }
+  return modelMap[provider] || null
 }
 
 async function loadAll() {
@@ -473,6 +512,11 @@ function applyContractDefaults() {
 function syncProvider() {
   form.config.provider = form.provider
   if (form.provider === 'mock' && !form.config.model) form.config.model = 'mock'
+  if (domesticProviderValues.has(form.provider)) {
+    if (!form.config.model) form.config.model = defaultModel(form.provider)
+    if (!form.config.api_key_env) form.config.api_key_env = 'OPENAI_COMPATIBLE_API_KEY'
+    if (!form.config.auth_type) form.config.auth_type = 'bearer'
+  }
 }
 
 async function submitForm() {
@@ -559,6 +603,7 @@ function providerText(value: string) {
 function providerTagType(value: string) {
   if (value === 'mock') return 'success'
   if (value === 'gjt_api' || value === 'gjt_link') return 'warning'
+  if (domesticProviderValues.has(value as Provider)) return 'warning'
   return 'info'
 }
 

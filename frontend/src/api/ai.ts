@@ -5,7 +5,7 @@ import type { ProjectItem } from './projects'
 export interface AIAgent {
   id: string
   name: string
-  provider: 'gjt_api' | 'gjt_link' | 'manual_import' | 'mock'
+  provider: AIProvider
   scenario: string
   config?: AgentConfig
   input_schema?: Record<string, any>
@@ -19,18 +19,33 @@ export interface AIAgent {
 }
 
 export interface AgentConfig {
-  provider?: 'gjt_api' | 'gjt_link' | 'manual_import' | 'mock'
+  provider?: AIProvider
   model?: string | null
   endpoint?: string | null
   auth_type?: string | null
+  api_key_env?: string | null
   timeout_seconds?: number
   max_retries?: number
   extra?: Record<string, any>
 }
 
+export type AIProvider =
+  | 'gjt_api'
+  | 'gjt_link'
+  | 'manual_import'
+  | 'mock'
+  | 'openai_compatible_local'
+  | 'qwen_agent'
+  | 'deepseek_agent'
+  | 'zhipu_agent'
+  | 'doubao_agent'
+  | 'qianfan_agent'
+  | 'spark_agent'
+  | 'kimi_agent'
+
 export interface AIAgentMutation {
   name: string
-  provider: 'gjt_api' | 'gjt_link' | 'manual_import' | 'mock'
+  provider: AIProvider
   scenario: string
   config: AgentConfig
   input_schema?: Record<string, any>

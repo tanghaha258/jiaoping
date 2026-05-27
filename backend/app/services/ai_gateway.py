@@ -24,6 +24,7 @@ from typing import Any
 from app.services.providers.base import AIProviderRequest, AIProviderResult
 from app.services.providers.gjt_api import GjtApiProvider
 from app.services.providers.mock import MockProvider
+from app.services.providers.openai_compatible import OpenAICompatibleProvider
 
 logger = logging.getLogger(__name__)
 
@@ -58,9 +59,23 @@ class AIGateway:
 
     def __init__(self):
         """Initialize the AI Gateway with available providers."""
+        domestic_aliases = {
+            name: OpenAICompatibleProvider(provider_name=name)
+            for name in (
+                "openai_compatible_local",
+                "qwen_agent",
+                "deepseek_agent",
+                "zhipu_agent",
+                "doubao_agent",
+                "qianfan_agent",
+                "spark_agent",
+                "kimi_agent",
+            )
+        }
         self.providers: dict[str, Any] = {
             "mock": MockProvider(),
             "gjt_api": GjtApiProvider(),
+            **domestic_aliases,
             # Future providers (uncomment when implemented):
             # "gjt_link": GjtLinkProvider(),
             # "manual_import": ManualImportProvider(),

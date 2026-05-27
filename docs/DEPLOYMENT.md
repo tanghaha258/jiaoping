@@ -148,3 +148,4 @@ powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1
 - `GJT_API_BASE_URL`、`GJT_API_KEY`、`GJT_AGENT_ID` 为空时使用 `mock` 模式。
 - 三个字段都配置后，readiness 会显示 `gjt_api` 模式。
 - 正式桂教通 API 文档到位后，只替换 provider 适配器，不改业务工作流和数据库契约。
+- 国内主流模型或本地网关优先走 OpenAI-compatible 适配器：配置 `OPENAI_COMPATIBLE_API_BASE_URL`、`OPENAI_COMPATIBLE_API_KEY`、`OPENAI_COMPATIBLE_MODEL` 后，在管理端 AI 智能体中选择 `OpenAI兼容本地网关`、`通义千问`、`DeepSeek`、`智谱GLM`、`豆包`、`百度千帆`、`讯飞星火` 或 `Kimi` 等 Provider。真实密钥只放后端环境变量，不写入浏览器可见 JSON。

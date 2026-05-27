@@ -14,12 +14,35 @@ from pydantic import BaseModel, Field
 
 # ─── Shared Types ─────────────────────────────────────────────────────────────
 
+DOMESTIC_PROVIDER_MODES = [
+    "openai_compatible_local",
+    "qwen_agent",
+    "deepseek_agent",
+    "zhipu_agent",
+    "doubao_agent",
+    "qianfan_agent",
+    "spark_agent",
+    "kimi_agent",
+]
+
+AI_PROVIDER_MODES = [
+    "mock",
+    "gjt_api",
+    "gjt_link",
+    "manual_import",
+    *DOMESTIC_PROVIDER_MODES,
+]
+
+AI_PROVIDER_PATTERN = "^(" + "|".join(AI_PROVIDER_MODES) + ")$"
+
+
 class AgentConfig(BaseModel):
     """Configuration for an AI agent."""
-    provider: str = "mock"  # gjt_api, gjt_link, manual_import, mock
+    provider: str = Field("mock", pattern=AI_PROVIDER_PATTERN)
     model: Optional[str] = None
     endpoint: Optional[str] = None
     auth_type: Optional[str] = None
+    api_key_env: Optional[str] = None
     timeout_seconds: int = 30
     max_retries: int = 1
     extra: dict[str, Any] = Field(default_factory=dict)
@@ -64,7 +87,7 @@ AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
         "scenario": "lesson_plan",
         "name": "AI教学方案工作流",
         "version": "2026-05-v1",
-        "provider_modes": ["mock", "gjt_api"],
+        "provider_modes": ["mock", "gjt_api", *DOMESTIC_PROVIDER_MODES],
         "input_contract": {
             "type": "object",
             "required": [
@@ -116,7 +139,7 @@ AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
         "scenario": "learning_diagnosis",
         "name": "学情诊断",
         "version": "2026-05-v1",
-        "provider_modes": ["mock", "gjt_api"],
+        "provider_modes": ["mock", "gjt_api", *DOMESTIC_PROVIDER_MODES],
         "input_contract": {
             "type": "object",
             "required": ["project_id", "class_id", "evidence"],
@@ -136,7 +159,7 @@ AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
         "scenario": "rubric_generation",
         "name": "评价量规生成",
         "version": "2026-05-v1",
-        "provider_modes": ["mock", "gjt_api"],
+        "provider_modes": ["mock", "gjt_api", *DOMESTIC_PROVIDER_MODES],
         "input_contract": {
             "type": "object",
             "required": ["project_id", "assessment_goal"],
@@ -156,7 +179,7 @@ AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
         "scenario": "resource_recommendation",
         "name": "资源推荐",
         "version": "2026-05-v1",
-        "provider_modes": ["mock", "gjt_api"],
+        "provider_modes": ["mock", "gjt_api", *DOMESTIC_PROVIDER_MODES],
         "input_contract": {
             "type": "object",
             "required": ["project_id", "resource_preferences"],
@@ -176,7 +199,7 @@ AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
         "scenario": "teaching_reflection",
         "name": "教学反思",
         "version": "2026-05-v1",
-        "provider_modes": ["mock", "gjt_api"],
+        "provider_modes": ["mock", "gjt_api", *DOMESTIC_PROVIDER_MODES],
         "input_contract": {
             "type": "object",
             "required": ["project_id", "implementation_notes"],
@@ -200,7 +223,7 @@ AI_AGENT_CONTRACTS: list[dict[str, Any]] = [
 class AIAgentCreate(BaseModel):
     """Request body for creating an AI agent configuration."""
     name: str = Field(..., min_length=1, max_length=128, description="智能体名称")
-    provider: str = Field(..., pattern=r"^(gjt_api|gjt_link|manual_import|mock)$", description="Provider类型")
+    provider: str = Field(..., pattern=AI_PROVIDER_PATTERN, description="Provider类型")
     scenario: str = Field(..., pattern=r"^(learning_diagnosis|lesson_plan|rubric_generation|resource_recommendation|teaching_reflection)$", description="应用场景")
     config: AgentConfig = Field(default_factory=AgentConfig, description="智能体配置")
     input_schema: Optional[dict[str, Any]] = Field(None, description="输入字段定义")
@@ -211,7 +234,7 @@ class AIAgentCreate(BaseModel):
 class AIAgentUpdate(BaseModel):
     """Request body for updating an AI agent configuration."""
     name: Optional[str] = Field(None, min_length=1, max_length=128)
-    provider: Optional[str] = Field(None, pattern=r"^(gjt_api|gjt_link|manual_import|mock)$")
+    provider: Optional[str] = Field(None, pattern=AI_PROVIDER_PATTERN)
     scenario: Optional[str] = Field(None, pattern=r"^(learning_diagnosis|lesson_plan|rubric_generation|resource_recommendation|teaching_reflection)$")
     config: Optional[AgentConfig] = None
     input_schema: Optional[dict[str, Any]] = None

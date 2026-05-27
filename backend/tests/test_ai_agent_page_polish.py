@@ -16,8 +16,16 @@ def test_ai_agent_page_explains_contract_governance():
         "桂教通预留",
         "Mock开发模式",
         "本地模型预留",
+        "OpenAI兼容本地网关",
+        "通义千问",
+        "DeepSeek",
+        "智谱GLM",
+        "豆包",
+        "百度千帆",
+        "讯飞星火",
+        "Kimi",
+        "国内智能体预设",
     ]:
         assert label in text
 
     assert "AI Agent Admin" not in text
-
