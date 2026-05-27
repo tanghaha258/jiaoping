@@ -38,7 +38,7 @@
 - Create: `backend/tests/test_ai_call_failure_observability.py`
 - Modify: `docs/superpowers/plans/2026-05-28-ai-call-failure-observability.md`
 
-- [ ] **Step 1: Write failing backend tests**
+- [x] **Step 1: Write failing backend tests**
 
 Add tests that exercise the public API and provider boundary:
 
@@ -177,7 +177,7 @@ def test_trial_readiness_warns_when_recent_real_provider_failure_exists():
     assert ai_item["route"] in {"/admin/ai-agents", "/admin/ai-calls"}
 ```
 
-- [ ] **Step 2: Verify red state**
+- [x] **Step 2: Verify red state**
 
 Run:
 
@@ -186,6 +186,8 @@ python -m pytest backend/tests/test_ai_call_failure_observability.py -q
 ```
 
 Expected: fail because `diagnostic_metadata`, `error_category`, and `/ai/calls/diagnostics/summary` do not exist yet.
+
+Observed 2026-05-28: `python -m pytest backend/tests/test_ai_call_failure_observability.py -q` failed (`4 failed`). The provider-boundary test fails because `AIProviderResult` has no `diagnostic_metadata`. The API-path tests also expose an existing `/api/v1/ai/calls` blocker: `AIService.initiate_call` casts seeded string user IDs to UUID, so the call path crashes before diagnostics can be serialized. Task 2 will fix this at the provider request boundary by preserving existing string IDs.
 
 - [ ] **Step 3: Commit red tests**
 
