@@ -11,9 +11,9 @@ class AIProviderRequest:
 
     scenario: str  # learning_diagnosis, lesson_plan, rubric_generation, resource_recommendation, teaching_reflection
     input_data: dict[str, Any]  # Structured input per scenario
-    user_id: UUID
-    school_id: UUID
-    project_id: Optional[UUID] = None
+    user_id: str | UUID
+    school_id: str | UUID
+    project_id: Optional[str | UUID] = None
     agent_config: dict[str, Any] = field(default_factory=dict)
 
 
@@ -26,6 +26,7 @@ class AIProviderResult:
     provider: str  # gjt_api, gjt_link, manual_import, mock
     scenario: str
     metadata: dict[str, Any] = field(default_factory=dict)
+    diagnostic_metadata: dict[str, Any] = field(default_factory=dict)
     error_message: Optional[str] = None
     requires_review: bool = True  # All AI output must be reviewed
     finished_at: Optional[datetime] = None

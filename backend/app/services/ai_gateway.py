@@ -121,6 +121,13 @@ class AIGateway:
                 provider="unknown",
                 scenario=call_request.scenario,
                 error_message=f"不支持的场景类型: {call_request.scenario}",
+                diagnostic_metadata=self._diagnostic(
+                    "unknown_error",
+                    "unknown",
+                    call_request.scenario,
+                    retryable=False,
+                    safe_metadata={"scenario": call_request.scenario},
+                ),
                 requires_review=True,
                 finished_at=datetime.now(timezone.utc),
             )
@@ -135,11 +142,25 @@ class AIGateway:
 
         if provider is None:
             logger.warning(
-                f"Provider '{provider_name}' not found, falling back to mock. "
+                f"Provider '{provider_name}' not found. "
                 f"Available providers: {list(self.providers.keys())}"
             )
-            provider = self.providers["mock"]
-            provider_name = "mock"
+            return AIProviderResult(
+                success=False,
+                content=None,
+                provider=provider_name,
+                scenario=call_request.scenario,
+                error_message=f"AI Provider is not registered: {provider_name}",
+                diagnostic_metadata=self._diagnostic(
+                    "provider_unsupported",
+                    provider_name,
+                    call_request.scenario,
+                    retryable=False,
+                    safe_metadata={"available_providers": list(self.providers.keys())},
+                ),
+                requires_review=True,
+                finished_at=datetime.now(timezone.utc),
+            )
 
         # Step 4: Execute the provider call
         logger.info(
@@ -157,6 +178,13 @@ class AIGateway:
                 content=None,
                 provider=provider_name,
                 scenario=call_request.scenario,
+                diagnostic_metadata=self._diagnostic(
+                    "unknown_error",
+                    provider_name,
+                    call_request.scenario,
+                    retryable=False,
+                    safe_metadata={"exception": e.__class__.__name__},
+                ),
                 error_message=f"AI服务调用异常: {str(e)}",
                 requires_review=True,
                 finished_at=datetime.now(timezone.utc),
@@ -171,6 +199,13 @@ class AIGateway:
                     f"scenario={call_request.scenario}"
                 )
                 result.success = False
+                result.diagnostic_metadata = self._diagnostic(
+                    "contract_validation_failed",
+                    result.provider or provider_name,
+                    result.scenario,
+                    retryable=False,
+                    safe_metadata={"content_type": type(result.content).__name__},
+                )
                 result.error_message = result.error_message or "AI输出结构校验未通过"
                 result.requires_review = True
 
@@ -318,3 +353,27 @@ class AIGateway:
             return await provider.health_check()
         except Exception:
             return False
+
+    def _diagnostic(
+        self,
+        category: str,
+        provider: str,
+        scenario: str,
+        retryable: bool,
+        safe_metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        remediation = {
+            "provider_unsupported": "在后端 Provider 注册表中补齐适配器，或把智能体切换到已支持 Provider。",
+            "contract_validation_failed": "检查智能体提示词和输出 JSON，确保满足本地场景契约。",
+            "unknown_error": "查看服务日志和 Provider 配置后重新发起调用。",
+        }.get(category, "查看 Provider 配置和调用记录后处理。")
+        return {
+            "error_code": category,
+            "error_category": category,
+            "provider": provider,
+            "scenario": scenario,
+            "retryable": retryable,
+            "remediation": remediation,
+            "upstream_status": None,
+            "safe_metadata": safe_metadata or {},
+        }

@@ -189,7 +189,7 @@ Expected: fail because `diagnostic_metadata`, `error_category`, and `/ai/calls/d
 
 Observed 2026-05-28: `python -m pytest backend/tests/test_ai_call_failure_observability.py -q` failed (`4 failed`). The provider-boundary test fails because `AIProviderResult` has no `diagnostic_metadata`. The API-path tests also expose an existing `/api/v1/ai/calls` blocker: `AIService.initiate_call` casts seeded string user IDs to UUID, so the call path crashes before diagnostics can be serialized. Task 2 will fix this at the provider request boundary by preserving existing string IDs.
 
-- [ ] **Step 3: Commit red tests**
+- [x] **Step 3: Commit red tests**
 
 Run:
 
@@ -198,6 +198,8 @@ git add backend/tests/test_ai_call_failure_observability.py docs/superpowers/pla
 git commit -m "Add AI call failure observability red tests"
 git push
 ```
+
+Observed 2026-05-28: committed and pushed as `29540d9 Add AI call failure observability red tests`.
 
 ---
 
@@ -214,7 +216,7 @@ git push
 - Modify: `docs/superpowers/plans/2026-05-28-ai-call-failure-observability.md`
 - Test: `backend/tests/test_ai_call_failure_observability.py`
 
-- [ ] **Step 1: Add provider result diagnostics field**
+- [x] **Step 1: Add provider result diagnostics field**
 
 Update `AIProviderResult`:
 
@@ -222,7 +224,7 @@ Update `AIProviderResult`:
 diagnostic_metadata: dict[str, Any] = field(default_factory=dict)
 ```
 
-- [ ] **Step 2: Add call persistence field**
+- [x] **Step 2: Add call persistence field**
 
 Add to `AIAgentCall`:
 
@@ -230,7 +232,7 @@ Add to `AIAgentCall`:
 diagnostic_metadata = Column(JSON, nullable=True, default=dict)
 ```
 
-- [ ] **Step 3: Implement diagnostic helpers in `AIService`**
+- [x] **Step 3: Implement diagnostic helpers in `AIService`**
 
 Add helpers that normalize a metadata object with:
 
@@ -249,7 +251,7 @@ Add helpers that normalize a metadata object with:
 
 The helpers must redact keys containing `key`, `token`, `secret`, `authorization`, or `password`.
 
-- [ ] **Step 4: Persist diagnostics for normal AI calls**
+- [x] **Step 4: Persist diagnostics for normal AI calls**
 
 In `AIService.initiate_call`, when `provider_result.success` is false:
 
@@ -261,7 +263,7 @@ call.diagnostic_metadata = self._diagnostic_from_provider_result(provider_result
 
 In the exception path, persist `unknown_error`.
 
-- [ ] **Step 5: Classify OpenAI-compatible provider failures**
+- [x] **Step 5: Classify OpenAI-compatible provider failures**
 
 Update `_failure` in `OpenAICompatibleProvider` to accept `category`, `retryable`, and `safe_metadata`. Use:
 
@@ -270,19 +272,19 @@ Update `_failure` in `OpenAICompatibleProvider` to accept `category`, `retryable
 - timeout -> `upstream_timeout`, retryable true;
 - malformed JSON or missing content -> `upstream_bad_response`, retryable false.
 
-- [ ] **Step 6: Stop unsupported provider fallback**
+- [x] **Step 6: Stop unsupported provider fallback**
 
 In `AIGateway.execute`, if provider is missing, return failed `AIProviderResult` with category `provider_unsupported` instead of executing mock.
 
-- [ ] **Step 7: Classify output contract validation**
+- [x] **Step 7: Classify output contract validation**
 
 When `validate_output` fails, set diagnostic metadata category `contract_validation_failed`.
 
-- [ ] **Step 8: Persist diagnostics for lesson-plan workflow**
+- [x] **Step 8: Persist diagnostics for lesson-plan workflow**
 
 In `LessonPlanWorkflowService.create_draft`, failed provider results and caught exceptions should set `call.diagnostic_metadata` before raising `AIProviderUnavailableException`.
 
-- [ ] **Step 9: Serialize error category**
+- [x] **Step 9: Serialize error category**
 
 Update `_call_to_dict` to include:
 
@@ -291,7 +293,7 @@ Update `_call_to_dict` to include:
 "error_category": (call.diagnostic_metadata or {}).get("error_category"),
 ```
 
-- [ ] **Step 10: Add diagnostics summary and filter**
+- [x] **Step 10: Add diagnostics summary and filter**
 
 Add `AIService.get_call_diagnostics_summary(...)`, filtering by school like `list_calls`, and add `error_category` to list filters.
 
@@ -305,7 +307,7 @@ async def get_call_diagnostics_summary(...):
 
 Place this route before `@router.get("/calls/{call_id}")`.
 
-- [ ] **Step 11: Verify backend green**
+- [x] **Step 11: Verify backend green**
 
 Run:
 
@@ -316,7 +318,9 @@ python -m compileall backend\app
 
 Expected: all tests pass and compile succeeds.
 
-- [ ] **Step 12: Commit backend implementation**
+Observed 2026-05-28: `python -m compileall backend\app\services\ai_service.py backend\app\services\lesson_plan_workflow.py backend\app\services\dashboard_service.py backend\app\api\routers\ai.py backend\app\services\ai_gateway.py backend\app\services\providers\openai_compatible.py backend\app\services\providers\gjt_api.py backend\app\models\ai_agent_call.py backend\app\main.py` passed. `python -m pytest backend/tests/test_ai_call_failure_observability.py backend/tests/test_ai_provider_readiness.py backend/tests/test_domestic_provider_contract.py -q` passed (`16 passed`, 5 warnings). Full backend compile verification with `python -m compileall backend\app` also passed.
+
+- [x] **Step 12: Commit backend implementation**
 
 Run:
 
@@ -325,6 +329,8 @@ git add backend/app backend/tests/test_ai_call_failure_observability.py docs/sup
 git commit -m "Persist AI call failure diagnostics"
 git push
 ```
+
+Observed 2026-05-28: implemented together with Task 3 readiness linkage in one backend diagnostics checkpoint.
 
 ---
 
@@ -335,7 +341,7 @@ git push
 - Modify: `backend/tests/test_ai_call_failure_observability.py`
 - Modify: `docs/superpowers/plans/2026-05-28-ai-call-failure-observability.md`
 
-- [ ] **Step 1: Extend readiness logic**
+- [x] **Step 1: Extend readiness logic**
 
 Update `_ai_contract_item` to inspect:
 
@@ -345,7 +351,7 @@ Update `_ai_contract_item` to inspect:
 
 Keep `mock` acceptable for local trial readiness unless a real provider is configured and broken.
 
-- [ ] **Step 2: Verify readiness test passes**
+- [x] **Step 2: Verify readiness test passes**
 
 Run:
 
@@ -355,7 +361,9 @@ python -m pytest backend/tests/test_ai_call_failure_observability.py::test_trial
 
 Expected: all selected readiness tests pass.
 
-- [ ] **Step 3: Commit readiness linkage**
+Observed 2026-05-28: readiness linkage is covered by the combined backend target run above (`16 passed`, including `test_trial_readiness_warns_when_recent_real_provider_failure_exists`). The dedicated command `python -m pytest backend/tests/test_ai_call_failure_observability.py::test_trial_readiness_warns_when_recent_real_provider_failure_exists backend/tests/test_trial_readiness.py -q` also passed (`5 passed`, 5 warnings).
+
+- [x] **Step 3: Commit readiness linkage**
 
 Run:
 
@@ -364,6 +372,8 @@ git add backend/app/services/dashboard_service.py backend/tests/test_ai_call_fai
 git commit -m "Link AI provider diagnostics to trial readiness"
 git push
 ```
+
+Observed 2026-05-28: implemented together with Task 2 backend diagnostics in one backend diagnostics checkpoint.
 
 ---
 

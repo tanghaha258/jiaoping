@@ -44,7 +44,13 @@ class OpenAICompatibleProvider(BaseAIProvider):
             if not value
         ]
         if missing:
-            return self._failure(request, f"Missing OpenAI-compatible provider config: {', '.join(missing)}")
+            return self._failure(
+                request,
+                f"Missing OpenAI-compatible provider config: {', '.join(missing)}",
+                "configuration_missing",
+                retryable=False,
+                safe_metadata={"missing": missing, "model": model},
+            )
 
         payload = self._build_payload(request, model, config)
 
@@ -57,8 +63,30 @@ class OpenAICompatibleProvider(BaseAIProvider):
                 timeout,
             )
             content = self._extract_content(response)
-        except (URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
-            return self._failure(request, str(exc))
+        except TimeoutError as exc:
+            return self._failure(
+                request,
+                str(exc),
+                "upstream_timeout",
+                retryable=True,
+                safe_metadata={"model": model, "timeout_seconds": timeout},
+            )
+        except URLError as exc:
+            return self._failure(
+                request,
+                str(exc),
+                "upstream_unreachable",
+                retryable=True,
+                safe_metadata={"model": model},
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            return self._failure(
+                request,
+                str(exc),
+                "upstream_bad_response",
+                retryable=False,
+                safe_metadata={"model": model},
+            )
 
         return AIProviderResult(
             success=True,
@@ -146,14 +174,39 @@ class OpenAICompatibleProvider(BaseAIProvider):
         except json.JSONDecodeError as exc:
             raise ValueError(f"OpenAI-compatible response content is not valid JSON: {exc}") from exc
 
-    def _failure(self, request: AIProviderRequest, message: str) -> AIProviderResult:
+    def _failure(
+        self,
+        request: AIProviderRequest,
+        message: str,
+        category: str,
+        retryable: bool = False,
+        safe_metadata: dict[str, Any] | None = None,
+    ) -> AIProviderResult:
         return AIProviderResult(
             success=False,
             content=None,
             provider=self.provider_name,
             scenario=request.scenario,
             error_message=message,
+            diagnostic_metadata={
+                "error_code": category,
+                "error_category": category,
+                "provider": self.provider_name,
+                "scenario": request.scenario,
+                "retryable": retryable,
+                "remediation": self._remediation(category),
+                "upstream_status": None,
+                "safe_metadata": safe_metadata or {},
+            },
             requires_review=True,
             finished_at=datetime.now(timezone.utc),
         )
 
+    def _remediation(self, category: str) -> str:
+        mapping = {
+            "configuration_missing": "补齐 Provider endpoint、model 和 api_key_env 后重新发起调用。",
+            "upstream_unreachable": "检查 Provider endpoint、网络连通性和服务可用性后重试。",
+            "upstream_timeout": "检查 Provider 响应时间，必要时调大 timeout_seconds 后重试。",
+            "upstream_bad_response": "检查上游返回是否为合法 JSON，并确认模型按本地契约输出。",
+        }
+        return mapping.get(category, "查看 Provider 配置和调用记录后处理。")

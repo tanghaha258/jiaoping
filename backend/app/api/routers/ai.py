@@ -15,7 +15,7 @@ import logging
 from typing import Any, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user, get_db, require_roles
@@ -291,6 +291,7 @@ async def initiate_call(
 
 @router.get("/calls")
 async def list_calls(
+    request: Request,
     agent_id: Optional[UUID] = Query(None, description="智能体过滤"),
     scenario: Optional[str] = Query(None, description="场景过滤"),
     provider: Optional[str] = Query(None, description="Provider过滤"),
@@ -309,6 +310,7 @@ async def list_calls(
     """
     service = get_service()
     filters = {}
+    error_category = request.query_params.get("error_category")
     if agent_id:
         filters["agent_id"] = str(agent_id)
     if scenario:
@@ -319,6 +321,8 @@ async def list_calls(
         filters["status"] = status
     if review_status:
         filters["review_status"] = review_status
+    if error_category:
+        filters["error_category"] = error_category
     if project_id:
         filters["project_id"] = str(project_id)
 
@@ -330,6 +334,20 @@ async def list_calls(
     except Exception as e:
         logger.exception("Failed to list calls")
         return error_response(50000, f"获取调用记录失败: {str(e)}", 500)
+
+
+@router.get("/calls/diagnostics/summary")
+async def get_call_diagnostics_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return failed AI call diagnostics aggregates for operations pages."""
+    service = get_service()
+    try:
+        return success_response(await service.get_call_diagnostics_summary(db, current_user))
+    except Exception as e:
+        logger.exception("Failed to summarize AI call diagnostics")
+        return error_response(50000, f"AI call diagnostics summary failed: {str(e)}", 500)
 
 
 @router.get("/calls/{call_id}")

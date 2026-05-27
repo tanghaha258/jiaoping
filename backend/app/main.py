@@ -25,6 +25,7 @@ async def lifespan(app: FastAPI):
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await ensure_sqlite_schema(conn)
 
     async with AsyncSessionFactory() as session:
         await seed_database(session)
@@ -32,6 +33,16 @@ async def lifespan(app: FastAPI):
 
     yield
     await engine.dispose()
+
+
+async def ensure_sqlite_schema(conn) -> None:
+    """Apply tiny SQLite schema additions for trial deployments without Alembic."""
+    if not settings.DATABASE_URL.startswith("sqlite"):
+        return
+    result = await conn.exec_driver_sql("PRAGMA table_info(ai_agent_calls)")
+    columns = {row[1] for row in result.fetchall()}
+    if "diagnostic_metadata" not in columns:
+        await conn.exec_driver_sql("ALTER TABLE ai_agent_calls ADD COLUMN diagnostic_metadata JSON")
 
 
 app = FastAPI(

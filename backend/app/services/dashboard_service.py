@@ -1,6 +1,7 @@
 """Dashboard service: aggregate statistics for the admin/teacher dashboard."""
 
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -278,7 +279,7 @@ class DashboardService:
             DashboardService._service_readiness_item(),
             DashboardService._organization_data_item(counts),
             DashboardService._user_accounts_item(counts),
-            DashboardService._ai_contract_item(counts),
+            await DashboardService._ai_contract_item(db, counts),
             DashboardService._teaching_workflow_item(counts),
             DashboardService._student_task_item(counts),
             DashboardService._resources_item(counts),
@@ -402,6 +403,104 @@ class DashboardService:
             action="让教师创建或采纳一个教学项目",
             route="/teacher/projects",
         )
+
+    @staticmethod
+    async def _ai_contract_item(db: AsyncSession, counts: dict) -> dict:
+        agents_result = await db.execute(
+            select(AIAgent).where(
+                AIAgent.scenario == "lesson_plan",
+                AIAgent.enabled.is_(True),
+                AIAgent.deleted_at.is_(None),
+            )
+        )
+        agents = agents_result.scalars().all()
+        real_agents = [agent for agent in agents if DashboardService._is_real_provider(agent.provider)]
+
+        if not agents:
+            return DashboardService._item(
+                key="ai_contract",
+                label="AI 智能体契约",
+                status="error",
+                description="教学方案生成需要启用 lesson_plan 智能体配置。",
+                metric=f"可用教学方案智能体 {counts['lesson_plan_agents']}",
+                action="检查 AI 智能体配置",
+                route="/admin/ai-agents",
+            )
+
+        misconfigured = [
+            agent for agent in real_agents
+            if DashboardService._missing_provider_config(agent)
+        ]
+        if misconfigured:
+            missing_names = "、".join(agent.name for agent in misconfigured[:3])
+            return DashboardService._item(
+                key="ai_contract",
+                label="AI 智能体契约",
+                status="error",
+                description="真实 Provider 智能体还缺少必要配置，补齐前不建议试运行。",
+                metric=f"待补齐配置 {len(misconfigured)} / 可用教学方案智能体 {len(agents)}",
+                action=f"检查 {missing_names or 'AI 智能体'} 配置",
+                route="/admin/ai-agents",
+            )
+
+        failure_count = await DashboardService._real_provider_failure_count(db)
+        if failure_count:
+            return DashboardService._item(
+                key="ai_contract",
+                label="AI 智能体契约",
+                status="warning",
+                description="真实 Provider 已出现调用失败，请联动调用记录排查。",
+                metric=f"真实 Provider 失败调用 {failure_count}",
+                action="查看 AI 调用诊断",
+                route="/admin/ai-calls",
+            )
+
+        return DashboardService._item(
+            key="ai_contract",
+            label="AI 智能体契约",
+            status="ok",
+            description="教学方案生成智能体配置完整。",
+            metric=f"可用教学方案智能体 {len(agents)} / 真实 Provider {len(real_agents)}",
+            action="检查 AI 智能体配置",
+            route="/admin/ai-agents",
+        )
+
+    @staticmethod
+    def _is_real_provider(provider: Optional[str]) -> bool:
+        return (provider or "mock") not in {"mock", "manual_import", "gjt_link"}
+
+    @staticmethod
+    def _missing_provider_config(agent: AIAgent) -> list[str]:
+        provider = agent.provider or "mock"
+        config = agent.config or {}
+        missing: list[str] = []
+        if not DashboardService._is_real_provider(provider):
+            return missing
+        if provider == "gjt_api":
+            extra = config.get("extra") or {}
+            if not (config.get("endpoint") or settings.GJT_API_BASE_URL):
+                missing.append("endpoint")
+            if not (config.get("agent_id") or extra.get("agent_id") or settings.GJT_AGENT_ID):
+                missing.append("agent_id")
+            return missing
+        api_key_env = config.get("api_key_env")
+        has_env_key = bool(api_key_env and os.getenv(api_key_env, ""))
+        has_api_key = bool(config.get("api_key") or settings.OPENAI_COMPATIBLE_API_KEY)
+        if not (config.get("endpoint") or settings.OPENAI_COMPATIBLE_API_BASE_URL):
+            missing.append("endpoint")
+        if not (config.get("model") or settings.OPENAI_COMPATIBLE_MODEL):
+            missing.append("model")
+        if not (has_env_key or has_api_key):
+            missing.append("api_key")
+        return missing
+
+    @staticmethod
+    async def _real_provider_failure_count(db: AsyncSession) -> int:
+        query = select(func.count()).select_from(AIAgentCall).where(
+            AIAgentCall.status == "failed",
+            AIAgentCall.provider.notin_(["mock", "manual_import", "gjt_link"]),
+        )
+        return int((await db.execute(query)).scalar() or 0)
 
     @staticmethod
     def _student_task_item(counts: dict) -> dict:

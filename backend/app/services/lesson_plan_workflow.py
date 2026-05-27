@@ -140,12 +140,24 @@ class LessonPlanWorkflowService:
             logger.exception("Lesson-plan provider call failed")
             call.status = "failed"
             call.error_message = str(exc)
+            call.diagnostic_metadata = self._diagnostic(
+                "unknown_error",
+                agent.provider or "mock",
+                "lesson_plan",
+                retryable=False,
+                safe_metadata={"exception": exc.__class__.__name__},
+            )
             await db.flush()
             raise AIProviderUnavailableException(str(exc))
 
         if not result.success:
             call.status = "failed"
             call.error_message = result.error_message or "AI provider failed"
+            call.diagnostic_metadata = self._diagnostic_from_provider_result(
+                result,
+                agent.provider or "mock",
+                "lesson_plan",
+            )
             await db.flush()
             raise AIProviderUnavailableException(call.error_message)
 
@@ -476,6 +488,68 @@ class LessonPlanWorkflowService:
                 "visibility": "school",
             },
         ]
+
+    def _diagnostic_from_provider_result(
+        self,
+        provider_result: Any,
+        provider: str,
+        scenario: str,
+    ) -> dict[str, Any]:
+        metadata = getattr(provider_result, "diagnostic_metadata", None) or {}
+        category = metadata.get("error_category") or metadata.get("error_code") or "unknown_error"
+        return self._diagnostic(
+            category,
+            metadata.get("provider") or provider,
+            metadata.get("scenario") or scenario,
+            retryable=bool(metadata.get("retryable", False)),
+            remediation=metadata.get("remediation"),
+            upstream_status=metadata.get("upstream_status"),
+            safe_metadata=metadata.get("safe_metadata") or {},
+        )
+
+    def _diagnostic(
+        self,
+        category: str,
+        provider: str,
+        scenario: str,
+        retryable: bool,
+        remediation: str | None = None,
+        upstream_status: Any = None,
+        safe_metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "error_code": category,
+            "error_category": category,
+            "provider": provider,
+            "scenario": scenario,
+            "retryable": retryable,
+            "remediation": remediation or self._default_remediation(category),
+            "upstream_status": upstream_status,
+            "safe_metadata": self._redact_diagnostic_metadata(safe_metadata or {}),
+        }
+
+    def _redact_diagnostic_metadata(self, value: Any) -> Any:
+        secret_tokens = ("key", "token", "secret", "authorization", "password")
+        if isinstance(value, dict):
+            return {
+                key: "[redacted]" if any(token in str(key).lower() for token in secret_tokens)
+                else self._redact_diagnostic_metadata(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [self._redact_diagnostic_metadata(item) for item in value]
+        return value
+
+    def _default_remediation(self, category: str) -> str:
+        mapping = {
+            "configuration_missing": "补齐 Provider endpoint、model 和 api_key_env 后重新发起调用。",
+            "provider_unsupported": "在后端 Provider 注册表中补齐适配器，或把智能体切换到已支持 Provider。",
+            "upstream_unreachable": "检查 Provider endpoint、网络连通性和服务可用性后重试。",
+            "upstream_timeout": "检查 Provider 响应时间，必要时调大 timeout_seconds 后重试。",
+            "upstream_bad_response": "检查上游返回是否为合法 JSON，并确认模型按本地契约输出。",
+            "contract_validation_failed": "检查智能体提示词和输出 JSON，确保满足本地场景契约。",
+        }
+        return mapping.get(category, "查看 Provider 配置和调用记录后处理。")
 
     async def _complete_step(
         self,

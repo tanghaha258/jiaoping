@@ -29,8 +29,15 @@ class GjtApiProvider(BaseAIProvider):
         agent_id = request.agent_config.get("agent_id") or settings.GJT_AGENT_ID
         timeout = int(request.agent_config.get("timeout_seconds") or settings.GJT_API_TIMEOUT_SECONDS)
 
-        if not endpoint:
-            return self._failure(request, "GJT_API_BASE_URL is not configured")
+        missing = [name for name, value in {"endpoint": endpoint, "agent_id": agent_id}.items() if not value]
+        if missing:
+            return self._failure(
+                request,
+                f"Missing GJT provider config: {', '.join(missing)}",
+                "configuration_missing",
+                retryable=False,
+                safe_metadata={"missing": missing, "agent_id": agent_id},
+            )
 
         payload = {
             "agent_id": agent_id,
@@ -47,8 +54,12 @@ class GjtApiProvider(BaseAIProvider):
                 api_key,
                 timeout,
             )
-        except (URLError, TimeoutError, OSError, ValueError) as exc:
-            return self._failure(request, str(exc))
+        except TimeoutError as exc:
+            return self._failure(request, str(exc), "upstream_timeout", retryable=True, safe_metadata={"agent_id": agent_id})
+        except URLError as exc:
+            return self._failure(request, str(exc), "upstream_unreachable", retryable=True, safe_metadata={"agent_id": agent_id})
+        except (OSError, ValueError) as exc:
+            return self._failure(request, str(exc), "upstream_bad_response", retryable=False, safe_metadata={"agent_id": agent_id})
 
         content = response.get("draft") or response.get("content") or response.get("data") or response
         return AIProviderResult(
@@ -77,13 +88,39 @@ class GjtApiProvider(BaseAIProvider):
             raise ValueError("GJT API response must be a JSON object")
         return parsed
 
-    def _failure(self, request: AIProviderRequest, message: str) -> AIProviderResult:
+    def _failure(
+        self,
+        request: AIProviderRequest,
+        message: str,
+        category: str,
+        retryable: bool = False,
+        safe_metadata: dict[str, Any] | None = None,
+    ) -> AIProviderResult:
         return AIProviderResult(
             success=False,
             content=None,
             provider=self.provider_name,
             scenario=request.scenario,
             error_message=message,
+            diagnostic_metadata={
+                "error_code": category,
+                "error_category": category,
+                "provider": self.provider_name,
+                "scenario": request.scenario,
+                "retryable": retryable,
+                "remediation": self._remediation(category),
+                "upstream_status": None,
+                "safe_metadata": safe_metadata or {},
+            },
             requires_review=True,
             finished_at=datetime.now(timezone.utc),
         )
+
+    def _remediation(self, category: str) -> str:
+        mapping = {
+            "configuration_missing": "补齐桂教通 endpoint、agent_id 和鉴权配置后重新自检。",
+            "upstream_unreachable": "检查桂教通地址、网络、白名单和服务状态。",
+            "upstream_timeout": "检查桂教通响应时间，必要时调大 timeout_seconds 后重试。",
+            "upstream_bad_response": "检查桂教通返回是否为合法 JSON，并确认智能体输出契约。",
+        }
+        return mapping.get(category, "查看桂教通 Provider 配置和调用记录后处理。")

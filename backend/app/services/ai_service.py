@@ -25,6 +25,7 @@ from uuid import UUID
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.ai_schemas import AI_AGENT_CONTRACTS, AI_PROVIDER_MODES
 from app.core.exceptions import (
@@ -79,8 +80,10 @@ def _agent_to_dict(agent: AIAgent) -> dict:
 def _call_to_dict(call: AIAgentCall) -> dict:
     """Serialize an AIAgentCall ORM object to a dict."""
     agent_name = None
-    if hasattr(call, 'agent') and call.agent:
-        agent_name = call.agent.name
+    agent = getattr(call, "__dict__", {}).get("agent")
+    if agent:
+        agent_name = agent.name
+    diagnostic_metadata = call.diagnostic_metadata or {}
 
     return {
         "id": call.id,
@@ -98,6 +101,8 @@ def _call_to_dict(call: AIAgentCall) -> dict:
         "response_payload": call.response_payload or {},
         "review_status": call.review_status,
         "error_message": call.error_message,
+        "diagnostic_metadata": diagnostic_metadata,
+        "error_category": diagnostic_metadata.get("error_category"),
         "created_at": call.created_at.isoformat() if call.created_at else None,
         "updated_at": call.updated_at.isoformat() if call.updated_at else None,
     }
@@ -392,8 +397,8 @@ class AIService:
         provider_request = AIProviderRequest(
             scenario=scenario,
             input_data=input_data,
-            user_id=UUID(user.id) if isinstance(user.id, str) else user.id,
-            school_id=UUID(user.school_id) if isinstance(user.school_id, str) else user.school_id,
+            user_id=user.id,
+            school_id=user.school_id,
             project_id=project_id,
             agent_config=agent.config or {},
         )
@@ -430,9 +435,22 @@ class AIService:
             call.response_payload = provider_result.content if provider_result.success else None
             call.output_summary = self._summarize(provider_result.content) if provider_result.success else None
             call.error_message = provider_result.error_message
+            if not provider_result.success:
+                call.diagnostic_metadata = self._diagnostic_from_provider_result(
+                    provider_result,
+                    agent.provider or "mock",
+                    scenario,
+                )
         except Exception as e:
             logger.exception(f"AI provider execution failed")
             call.status = "failed"
+            call.diagnostic_metadata = self._diagnostic(
+                "unknown_error",
+                agent.provider or "mock",
+                scenario,
+                retryable=False,
+                safe_metadata={"exception": e.__class__.__name__},
+            )
             call.error_message = f"AI调用异常: {str(e)}"
 
         await db.flush()
@@ -591,7 +609,7 @@ class AIService:
         page_size: int = 20,
     ) -> dict:
         """List AI call records with pagination, filtering, and school isolation."""
-        query = select(AIAgentCall)
+        query = select(AIAgentCall).options(selectinload(AIAgentCall.agent))
 
         # School-level data isolation
         if user.school_id:
@@ -601,6 +619,8 @@ class AIService:
             for key in ("agent_id", "scenario", "provider", "status", "review_status", "project_id"):
                 if filters.get(key):
                     query = query.where(getattr(AIAgentCall, key) == filters[key])
+            if filters.get("error_category"):
+                query = query.where(AIAgentCall.status == "failed")
 
         # Count total
         count_query = select(func.count()).select_from(query.subquery())
@@ -612,6 +632,12 @@ class AIService:
         query = query.order_by(AIAgentCall.created_at.desc()).offset(offset).limit(page_size)
         result = await db.execute(query)
         calls = result.scalars().all()
+        if filters and filters.get("error_category"):
+            calls = [
+                call for call in calls
+                if (call.diagnostic_metadata or {}).get("error_category") == filters["error_category"]
+            ]
+            total = len(calls)
 
         return {
             "items": [_call_to_dict(c) for c in calls],
@@ -620,10 +646,56 @@ class AIService:
             "page_size": page_size,
         }
 
+    async def get_call_diagnostics_summary(
+        self,
+        db: AsyncSession,
+        user: User,
+    ) -> dict:
+        """Return admin-facing failed AI call diagnostics aggregates."""
+        query = select(AIAgentCall).where(AIAgentCall.status == "failed")
+        if user.school_id:
+            query = query.where(AIAgentCall.school_id == user.school_id)
+        query = query.order_by(AIAgentCall.created_at.desc())
+        result = await db.execute(query)
+        failed_calls = result.scalars().all()
+
+        by_category: dict[str, int] = {}
+        by_provider: dict[str, int] = {}
+        recent_failures: list[dict[str, Any]] = []
+        for call in failed_calls:
+            metadata = call.diagnostic_metadata or {}
+            category = metadata.get("error_category") or "unknown_error"
+            by_category[category] = by_category.get(category, 0) + 1
+            by_provider[call.provider] = by_provider.get(call.provider, 0) + 1
+            if len(recent_failures) < 10:
+                recent_failures.append({
+                    "id": call.id,
+                    "provider": call.provider,
+                    "scenario": call.scenario,
+                    "error_category": category,
+                    "error_message": call.error_message,
+                    "created_at": call.created_at.isoformat() if call.created_at else None,
+                })
+
+        return {
+            "total_failed": len(failed_calls),
+            "by_category": [
+                {"category": category, "count": count}
+                for category, count in sorted(by_category.items(), key=lambda item: item[1], reverse=True)
+            ],
+            "by_provider": [
+                {"provider": provider, "count": count}
+                for provider, count in sorted(by_provider.items(), key=lambda item: item[1], reverse=True)
+            ],
+            "recent_failures": recent_failures,
+        }
+
     async def get_call(self, db: AsyncSession, call_id: UUID, user: User) -> dict:
         """Get a single AI call record with school isolation check."""
         result = await db.execute(
-            select(AIAgentCall).where(AIAgentCall.id == str(call_id))
+            select(AIAgentCall)
+            .options(selectinload(AIAgentCall.agent))
+            .where(AIAgentCall.id == str(call_id))
         )
         call = result.scalar_one_or_none()
         if call is None:
@@ -665,6 +737,71 @@ class AIService:
             "percent": percent,
             "steps": [self._step_to_dict(step) for step in steps],
         }
+
+    def _diagnostic_from_provider_result(
+        self,
+        provider_result,
+        provider: str,
+        scenario: str,
+    ) -> dict[str, Any]:
+        metadata = getattr(provider_result, "diagnostic_metadata", None) or {}
+        category = metadata.get("error_category") or metadata.get("error_code") or "unknown_error"
+        return self._diagnostic(
+            category,
+            metadata.get("provider") or provider,
+            metadata.get("scenario") or scenario,
+            retryable=bool(metadata.get("retryable", False)),
+            remediation=metadata.get("remediation"),
+            upstream_status=metadata.get("upstream_status"),
+            safe_metadata=metadata.get("safe_metadata") or {},
+        )
+
+    def _diagnostic(
+        self,
+        category: str,
+        provider: str,
+        scenario: str,
+        retryable: bool,
+        remediation: str | None = None,
+        upstream_status: Any = None,
+        safe_metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        redacted_metadata = self._redact_diagnostic_metadata(safe_metadata or {})
+        return {
+            "error_code": category,
+            "error_category": category,
+            "provider": provider,
+            "scenario": scenario,
+            "retryable": retryable,
+            "remediation": remediation or self._default_remediation(category),
+            "upstream_status": upstream_status,
+            "safe_metadata": redacted_metadata,
+        }
+
+    def _redact_diagnostic_metadata(self, value: Any) -> Any:
+        secret_tokens = ("key", "token", "secret", "authorization", "password")
+        if isinstance(value, dict):
+            redacted: dict[str, Any] = {}
+            for key, item in value.items():
+                if any(token in str(key).lower() for token in secret_tokens):
+                    redacted[key] = "[redacted]"
+                else:
+                    redacted[key] = self._redact_diagnostic_metadata(item)
+            return redacted
+        if isinstance(value, list):
+            return [self._redact_diagnostic_metadata(item) for item in value]
+        return value
+
+    def _default_remediation(self, category: str) -> str:
+        mapping = {
+            "configuration_missing": "补齐 Provider endpoint、model 和 api_key_env 后重新发起调用。",
+            "provider_unsupported": "在后端 Provider 注册表中补齐适配器，或把智能体切换到已支持 Provider。",
+            "upstream_unreachable": "检查 Provider endpoint、网络连通性和服务可用性后重试。",
+            "upstream_timeout": "检查 Provider 响应时间，必要时调大 timeout_seconds 后重试。",
+            "upstream_bad_response": "检查上游返回是否为合法 JSON，并确认模型按本地契约输出。",
+            "contract_validation_failed": "检查智能体提示词和输出 JSON，确保满足本地场景契约。",
+        }
+        return mapping.get(category, "查看 Provider 配置和调用记录后处理。")
 
     def _setting(self, name: str) -> Optional[str]:
         """Read provider readiness configuration from the process environment."""

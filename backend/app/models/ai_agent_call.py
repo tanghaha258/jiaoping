@@ -23,6 +23,7 @@ class AIAgentCall(Base, CommonMixin):
     status = Column(String(20), nullable=False, default="created")
     review_status = Column(String(20), nullable=False, default="pending")
     error_message = Column(String(1000), nullable=True)
+    diagnostic_metadata = Column(JSON, nullable=True, default=dict)
 
     # Relationships
     agent = relationship("AIAgent", backref="calls")
