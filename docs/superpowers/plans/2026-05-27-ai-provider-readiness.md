@@ -174,7 +174,7 @@ Observed 2026-05-27: `python -m pytest backend/tests/test_ai_agent_page_polish.p
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 - Modify: `docs/superpowers/plans/2026-05-27-ai-provider-readiness.md`
 
-- [ ] **Step 1: Run release check**
+- [x] **Step 1: Run release check**
 
 Run:
 
@@ -184,7 +184,9 @@ powershell -ExecutionPolicy Bypass -File scripts\check-release.ps1
 
 Expected: backend tests, compile, frontend text health, route smoke, and frontend build pass.
 
-- [ ] **Step 2: Browser smoke**
+Observed 2026-05-27: `powershell -ExecutionPolicy Bypass -File scripts\check-release.ps1` passed after hardening the script to fail on native command non-zero exits. Latest run: backend tests (`47 passed`), backend compile, frontend text health, route smoke (`checked_routes=27`), and frontend build passed.
+
+- [x] **Step 2: Browser smoke**
 
 Open:
 
@@ -198,11 +200,13 @@ Verify visible copy:
 - `配置可运行`
 - row-level self-check action
 
-- [ ] **Step 3: Update progress and plan**
+Observed 2026-05-27: Browser opened `http://127.0.0.1:3000/admin/ai-agents` as system admin and rendered `AI智能体治理`, `配置自检`, the readiness column, and row action buttons. Initial click smoke exposed a real 422 because seeded AI agent IDs are string IDs rather than UUIDs; added regression coverage and fixed the readiness route to accept string IDs. After backend restart, the front-end proxy readiness API returned 200 for `agent-lesson-plan-0000-0000-0001` with label `配置可运行`.
+
+- [x] **Step 3: Update progress and plan**
 
 Record verification and browser smoke results.
 
-- [ ] **Step 4: Commit and push**
+- [x] **Step 4: Commit and push**
 
 Run:
 

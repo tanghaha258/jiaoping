@@ -197,7 +197,7 @@ class AIService:
             raise ResourceNotFoundException(f"AI智能体不存在: {agent_id}")
         return _agent_to_dict(agent)
 
-    async def get_agent_readiness(self, db: AsyncSession, agent_id: UUID, user: User) -> dict:
+    async def get_agent_readiness(self, db: AsyncSession, agent_id: str | UUID, user: User) -> dict:
         """Return local readiness diagnostics for one AI agent configuration."""
         result = await db.execute(
             select(AIAgent).where(

@@ -209,7 +209,7 @@ async def get_agent(
 
 @router.get("/agents/{agent_id}/readiness")
 async def get_agent_readiness(
-    agent_id: UUID,
+    agent_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles("system_admin", "school_admin", "admin", "super_admin")),
 ):

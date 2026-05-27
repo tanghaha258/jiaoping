@@ -60,6 +60,17 @@ def test_provider_readiness_reports_mock_ready_and_manual_required():
     assert any(item["key"] == "teacher_adoption_gate" for item in manual_data["checks"])
 
 
+def test_provider_readiness_accepts_seeded_string_agent_id():
+    with TestClient(app) as client:
+        headers = _login(client, "admin")
+        response = _readiness(client, headers, "agent-lesson-plan-0000-0000-0001")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["agent_id"] == "agent-lesson-plan-0000-0000-0001"
+    assert data["status"] == "ready"
+
+
 def test_provider_readiness_reports_domestic_missing_and_ready(monkeypatch):
     monkeypatch.setenv("READINESS_TEST_API_KEY", "secret-for-readiness")
 
@@ -139,4 +150,3 @@ def test_provider_readiness_permissions_and_missing_agent():
     assert school_admin_response.status_code == 200
     assert teacher_response.status_code == 403
     assert missing_response.status_code == 404
-
