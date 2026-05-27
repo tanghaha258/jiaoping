@@ -72,8 +72,11 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Polished admin AI agent governance page with provider-neutral contract copy, Provider adapter statuses, teacher adoption gate, and detail/form guidance.
   - [ ] Continue page-by-page browser smoke and visual polish.
 - [ ] Phase 10: Build provider-neutral AI contract foundation.
-  - [ ] Keep GJT as a provider adapter, not the platform core.
-  - [ ] Harden local scenario contracts, provider adapters, progress events, adoption gates, and error metadata.
+  - [x] Keep GJT as a provider adapter, not the platform core.
+  - [x] Add domestic/OpenAI-compatible provider adapter foundation.
+  - [x] Add AI provider readiness self-checks.
+  - [x] Confirm AI call failure observability design.
+  - [ ] Harden error metadata, diagnostics aggregation, AI call filters, and trial readiness linkage.
 
 ## Decisions
 
@@ -91,6 +94,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 
 ## Completed Work
 
+- 2026-05-28: Confirmed P10 Batch 3 Scheme B for AI call failure observability. Added `docs/superpowers/specs/2026-05-28-ai-call-failure-observability-design.md` covering structured failure metadata, provider failure categories, diagnostics summary, `/admin/ai-calls` filtering and operations diagnosis, and trial readiness linkage. This is a docs-only design checkpoint before TDD implementation.
 - 2026-05-27: Started AI provider readiness Task 1 using the superpowers executing-plans/TDD flow. Added backend readiness tests covering system-admin agent creation, `ready`, `not_configured`, `manual_required`, `unsupported`, school-admin access, teacher blocking, and missing-agent 404. Verified the red state with `python -m pytest backend/tests/test_ai_provider_readiness.py -q` (`4 failed`) because `/api/v1/ai/agents/{agent_id}/readiness` is not routed yet.
 - 2026-05-27: Completed AI provider readiness Task 2 backend implementation. Added local-only readiness diagnostics in `AIService`, exposed `GET /api/v1/ai/agents/{agent_id}/readiness` for system/school admins, and covered mock, manual, GJT, domestic/OpenAI-compatible, missing config, and unsupported-provider cases. Verified with `python -m pytest backend/tests/test_ai_provider_readiness.py -q` (`4 passed`), AI neighbor checks (`15 passed`), and `python -m compileall backend\app`.
 - 2026-05-27: Completed AI provider readiness Task 3 frontend implementation. Added `getAgentReadiness`, readiness response types, a row-level `配置自检` action, a readiness status column, and a detail-drawer readiness panel with endpoint/model/key-source checks and status legend. Verified the frontend red-green cycle with `python -m pytest backend/tests/test_ai_agent_page_polish.py -q` failing first on missing `配置自检`, then targeted frontend checks passing (`7 passed`) and `npm run build` passing.
