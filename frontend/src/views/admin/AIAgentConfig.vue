@@ -91,6 +91,18 @@
               <span class="muted">{{ row.config?.model || row.config?.endpoint || '未配置' }}</span>
             </template>
           </el-table-column>
+          <el-table-column label="配置自检" min-width="150">
+            <template #default="{ row }">
+              <div class="readiness-cell">
+                <el-tag :type="readinessTagType(readinessMap[row.id]?.status)" effect="light">
+                  {{ readinessMap[row.id]?.label || '未自检' }}
+                </el-tag>
+                <span v-if="readinessMap[row.id]?.status === 'not_configured'" class="readiness-hint">
+                  环境变量未设置
+                </span>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column label="状态" width="100">
             <template #default="{ row }">
               <el-switch
@@ -106,10 +118,19 @@
               <span class="muted">{{ formatDate(row.updated_at || row.created_at) }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="操作" width="190" fixed="right">
             <template #default="{ row }">
               <el-tooltip content="查看详情">
                 <el-button :icon="View" circle text @click.stop="openDetail(row)" />
+              </el-tooltip>
+              <el-tooltip content="配置自检">
+                <el-button
+                  :icon="CircleCheck"
+                  circle
+                  text
+                  :loading="readinessLoadingId === row.id"
+                  @click.stop="runReadiness(row)"
+                />
               </el-tooltip>
               <el-tooltip content="编辑">
                 <el-button :icon="Edit" circle text @click.stop="openEdit(row)" />
@@ -196,6 +217,44 @@
         <div class="detail-section">
           <h3>Provider配置</h3>
           <p class="muted">这里保存的是适配信息和非敏感参数；密钥、Token 等敏感值应放在后端环境变量或 Provider 服务端配置中。</p>
+        </div>
+        <div class="readiness-panel">
+          <div class="readiness-head">
+            <div>
+              <h3>配置自检</h3>
+              <p>{{ currentReadiness?.summary || '运行自检后可查看接口端点、模型标识、密钥来源等本地配置状态。' }}</p>
+            </div>
+            <el-button
+              size="small"
+              :icon="CircleCheck"
+              :loading="readinessLoadingId === selectedAgent.id"
+              @click="runReadiness(selectedAgent)"
+            >
+              配置自检
+            </el-button>
+          </div>
+          <el-tag :type="readinessTagType(currentReadiness?.status)" effect="light">
+            {{ currentReadiness?.label || '未自检' }}
+          </el-tag>
+          <div class="readiness-legend">
+            <el-tag type="success" size="small" effect="light">配置可运行</el-tag>
+            <el-tag type="danger" size="small" effect="light">缺少配置</el-tag>
+            <el-tag type="warning" size="small" effect="light">需要人工回填</el-tag>
+          </div>
+          <div v-if="currentReadiness" class="readiness-checks">
+            <div v-for="check in currentReadiness.checks" :key="check.key" class="readiness-check">
+              <span>{{ check.label }}</span>
+              <el-tag size="small" :type="checkTagType(check.status)" effect="plain">{{ checkStatusText(check.status) }}</el-tag>
+              <p>{{ check.message }}</p>
+            </div>
+          </div>
+          <div v-if="currentReadiness?.actions.length" class="readiness-actions">
+            <strong>建议动作</strong>
+            <p v-for="action in currentReadiness.actions" :key="`${action.field}-${action.label}`">
+              {{ action.label }}
+            </p>
+          </div>
+          <p v-if="!currentReadiness" class="muted">缺少配置时请优先补齐接口端点、模型标识、密钥来源；环境变量未设置会阻断真实 Provider 调用。</p>
         </div>
         <el-descriptions :column="1" border>
           <el-descriptions-item label="模型">{{ selectedAgent.config?.model || '未配置' }}</el-descriptions-item>
@@ -320,9 +379,9 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { Delete, Document, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue'
-import { createAgent, deleteAgent, getAgents, getAIContracts, updateAgent } from '@/api/ai'
-import type { AgentConfig, AIAgent, AIAgentMutation, AIContract } from '@/api/ai'
+import { CircleCheck, Delete, Document, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue'
+import { createAgent, deleteAgent, getAgentReadiness, getAgents, getAIContracts, updateAgent } from '@/api/ai'
+import type { AgentConfig, AIAgent, AIAgentMutation, AIAgentReadiness, AIContract } from '@/api/ai'
 
 type Provider = AIAgent['provider']
 
@@ -371,8 +430,10 @@ const domesticProviderValues = new Set<Provider>([
 const loading = ref(false)
 const saving = ref(false)
 const switchingId = ref('')
+const readinessLoadingId = ref('')
 const agents = ref<AIAgent[]>([])
 const contracts = ref<AIContract[]>([])
+const readinessMap = reactive<Record<string, AIAgentReadiness>>({})
 const selectedContractScenario = ref('lesson_plan')
 const selectedAgent = ref<AIAgent | null>(null)
 const detailVisible = ref(false)
@@ -406,6 +467,7 @@ const enabledCount = computed(() => agents.value.filter(item => item.enabled).le
 const providerModeCount = computed(() => providerStatusCards.length)
 const selectedContract = computed(() => contracts.value.find(item => item.scenario === selectedContractScenario.value))
 const activeContract = computed(() => selectedAgent.value ? contracts.value.find(item => item.scenario === selectedAgent.value?.scenario) : null)
+const currentReadiness = computed(() => selectedAgent.value ? readinessMap[selectedAgent.value.id] : null)
 
 function makeDefaultConfig(provider: Provider): AgentConfig {
   return {
@@ -573,6 +635,17 @@ async function toggleEnabled(agent: AIAgent, enabled: boolean) {
   }
 }
 
+async function runReadiness(agent: AIAgent) {
+  readinessLoadingId.value = agent.id
+  try {
+    const res = await getAgentReadiness(agent.id)
+    readinessMap[agent.id] = res.data
+    ElMessage.success(`配置自检：${res.data.label}`)
+  } finally {
+    readinessLoadingId.value = ''
+  }
+}
+
 async function removeAgent(agent: AIAgent) {
   await ElMessageBox.confirm(`确认删除“${agent.name}”？删除后列表不再显示。`, '删除智能体', {
     type: 'warning',
@@ -605,6 +678,25 @@ function providerTagType(value: string) {
   if (value === 'gjt_api' || value === 'gjt_link') return 'warning'
   if (domesticProviderValues.has(value as Provider)) return 'warning'
   return 'info'
+}
+
+function readinessTagType(status?: AIAgentReadiness['status']) {
+  if (status === 'ready') return 'success'
+  if (status === 'manual_required') return 'warning'
+  if (status === 'not_configured' || status === 'unsupported') return 'danger'
+  return 'info'
+}
+
+function checkTagType(status: AIAgentReadiness['checks'][number]['status']) {
+  if (status === 'ok') return 'success'
+  if (status === 'warning') return 'warning'
+  return 'danger'
+}
+
+function checkStatusText(status: AIAgentReadiness['checks'][number]['status']) {
+  if (status === 'ok') return '正常'
+  if (status === 'warning') return '提醒'
+  return '阻断'
 }
 
 function prettyJson(value: unknown) {
@@ -781,6 +873,17 @@ onMounted(loadAll)
   font-size: 12px;
 }
 
+.readiness-cell {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+
+.readiness-hint {
+  color: #dc2626;
+  font-size: 12px;
+}
+
 .pagination-row {
   justify-content: flex-end;
   margin-top: 14px;
@@ -883,6 +986,75 @@ onMounted(loadAll)
   margin: 0;
   color: #1f3356;
   font-size: 15px;
+}
+
+.readiness-panel {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid #e5edf7;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.readiness-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.readiness-head h3 {
+  margin: 0 0 4px;
+  color: #1f3356;
+  font-size: 15px;
+}
+
+.readiness-head p,
+.readiness-actions p,
+.readiness-check p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.readiness-checks {
+  display: grid;
+  gap: 8px;
+}
+
+.readiness-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.readiness-check {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid #e5edf7;
+}
+
+.readiness-check span {
+  color: #1f3356;
+  font-weight: 700;
+}
+
+.readiness-check p {
+  grid-column: 1 / -1;
+}
+
+.readiness-actions {
+  display: grid;
+  gap: 4px;
+}
+
+.readiness-actions strong {
+  color: #1f3356;
 }
 
 .json-block {

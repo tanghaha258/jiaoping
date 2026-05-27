@@ -110,7 +110,7 @@ Observed 2026-05-27: `python -m pytest backend/tests/test_ai_provider_readiness.
 - Modify: `frontend/src/views/admin/AIAgentConfig.vue`
 - Modify: `backend/tests/test_ai_agent_page_polish.py`
 
-- [ ] **Step 1: Extend frontend static test**
+- [x] **Step 1: Extend frontend static test**
 
 Add required copy anchors:
 
@@ -123,7 +123,7 @@ Add required copy anchors:
 - `密钥来源`
 - `环境变量未设置`
 
-- [ ] **Step 2: Run red frontend static test**
+- [x] **Step 2: Run red frontend static test**
 
 Run:
 
@@ -133,7 +133,9 @@ python -m pytest backend/tests/test_ai_agent_page_polish.py -q
 
 Expected: fail until the page is updated.
 
-- [ ] **Step 3: Add API type and function**
+Observed 2026-05-27: `python -m pytest backend/tests/test_ai_agent_page_polish.py -q` failed because the page did not yet contain `配置自检`.
+
+- [x] **Step 3: Add API type and function**
 
 Add:
 
@@ -142,7 +144,7 @@ export interface AIAgentReadiness { ... }
 export function getAgentReadiness(id: string): Promise<ApiResponse<AIAgentReadiness>>
 ```
 
-- [ ] **Step 4: Render readiness in AI agent page**
+- [x] **Step 4: Render readiness in AI agent page**
 
 Add:
 
@@ -152,7 +154,7 @@ Add:
 - loading state for each checked agent;
 - fallback text before check is run.
 
-- [ ] **Step 5: Run frontend targeted checks**
+- [x] **Step 5: Run frontend targeted checks**
 
 Run:
 
@@ -163,6 +165,8 @@ npm run build
 ```
 
 Expected: pass.
+
+Observed 2026-05-27: `python -m pytest backend/tests/test_ai_agent_page_polish.py backend/tests/test_frontend_route_smoke.py backend/tests/test_frontend_text_health.py -q` passed (`7 passed`) and `npm run build` passed.
 
 ### Task 4: Verify, Browser Smoke, Commit, Push
 

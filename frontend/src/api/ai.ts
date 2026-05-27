@@ -53,6 +53,29 @@ export interface AIAgentMutation {
   enabled: boolean
 }
 
+export interface AIAgentReadinessCheck {
+  key: string
+  label: string
+  status: 'ok' | 'warning' | 'error'
+  message: string
+}
+
+export interface AIAgentReadinessAction {
+  label: string
+  field: string
+}
+
+export interface AIAgentReadiness {
+  agent_id: string
+  provider: string
+  status: 'ready' | 'manual_required' | 'not_configured' | 'unsupported'
+  mode: string
+  label: string
+  summary: string
+  checks: AIAgentReadinessCheck[]
+  actions: AIAgentReadinessAction[]
+}
+
 export interface AIContract {
   scenario: string
   name: string
@@ -241,6 +264,10 @@ export function getAIContracts(): Promise<ApiResponse<{ items: AIContract[] }>> 
 
 export function getAgent(id: string): Promise<ApiResponse<AIAgent>> {
   return request.get(`/ai/agents/${id}`)
+}
+
+export function getAgentReadiness(id: string): Promise<ApiResponse<AIAgentReadiness>> {
+  return request.get(`/ai/agents/${id}/readiness`)
 }
 
 export function createAgent(
