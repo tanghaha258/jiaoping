@@ -481,7 +481,7 @@ Expected: tests and build pass.
 
 Observed 2026-05-28: `python -m pytest backend/tests/test_ai_call_page_polish.py backend/tests/test_frontend_route_smoke.py backend/tests/test_frontend_text_health.py -q` passed (`7 passed`, 1 warning), and `npm run build` passed.
 
-- [ ] **Step 7: Commit frontend UI**
+- [x] **Step 7: Commit frontend UI**
 
 Run:
 
@@ -491,6 +491,8 @@ git commit -m "Add AI call diagnostics UI"
 git push
 ```
 
+Observed 2026-05-28: committed and pushed as `a482723 Add AI call diagnostics UI`.
+
 ---
 
 ### Task 5: Release Verification, Browser Smoke, and Progress Update
@@ -499,7 +501,7 @@ git push
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 - Modify: `docs/superpowers/plans/2026-05-28-ai-call-failure-observability.md`
 
-- [ ] **Step 1: Run full release verification**
+- [x] **Step 1: Run full release verification**
 
 Run:
 
@@ -509,7 +511,9 @@ powershell -ExecutionPolicy Bypass -File scripts\check-release.ps1
 
 Expected: backend tests, backend compile, frontend text health, route smoke, and frontend build all pass.
 
-- [ ] **Step 2: Browser smoke**
+Observed 2026-05-28: first release run exposed a test-order dependency in `test_lesson_plan_draft_records_thinking_progress`, where the smoke test selected `options["agents"][0]` and could pick a newly created real provider with missing config. The test now explicitly selects the mock lesson-plan agent. After the fix, `powershell -ExecutionPolicy Bypass -File scripts\check-release.ps1` passed: backend tests (`51 passed`, 5 warnings), backend compile, frontend text health, route smoke (`checked_routes=27`), and frontend build.
+
+- [x] **Step 2: Browser smoke**
 
 If local services are available, open:
 
@@ -518,7 +522,9 @@ If local services are available, open:
 
 Expected: AI call diagnostics labels render, and Dashboard readiness still renders without overlap.
 
-- [ ] **Step 3: Update progress**
+Observed 2026-05-28: restarted the local backend on port 8000 so the running service included `/api/v1/ai/calls/diagnostics/summary`. Browser-smoked `http://127.0.0.1:3000/admin/ai-calls`; `AI调用观测`, `失败诊断`, `失败类别`, `近期失败`, and `调用台账` rendered with no browser console errors or warnings. Browser-smoked `http://127.0.0.1:3000/admin`; `管理驾驶舱`, `试运行检查清单`, and `AI 智能体契约` rendered with no browser console errors or warnings.
+
+- [x] **Step 3: Update progress**
 
 Update `docs/superpowers/progress/2026-05-25-platform-progress.md` to mark P10 Batch 3 implementation complete and record verification evidence.
 

@@ -69,8 +69,9 @@ def test_lesson_plan_draft_records_thinking_progress():
     with TestClient(app) as client:
         headers = _login_teacher(client)
         options = client.get("/api/v1/ai/workflows/lesson-plan/options", headers=headers).json()["data"]
+        mock_agent = next(item for item in options["agents"] if item["provider"] == "mock")
         body = {
-            "agent_id": options["agents"][0]["id"],
+            "agent_id": mock_agent["id"],
             "theme": "AI progress smoke",
             "grade": "七年级",
             "subject_ids": [item["id"] for item in options["subjects"][:2]],
