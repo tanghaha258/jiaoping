@@ -207,6 +207,18 @@ async def get_agent(
         return error_response(e.code, e.message, e.status_code)
 
 
+@router.get("/agents/{agent_id}/readiness")
+async def get_agent_readiness(
+    agent_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("system_admin", "school_admin", "admin", "super_admin")),
+):
+    """Return local provider readiness diagnostics without calling upstream AI."""
+    service = get_service()
+    readiness = await service.get_agent_readiness(db, agent_id, current_user)
+    return success_response(readiness)
+
+
 @router.patch("/agents/{agent_id}")
 async def update_agent(
     agent_id: UUID,

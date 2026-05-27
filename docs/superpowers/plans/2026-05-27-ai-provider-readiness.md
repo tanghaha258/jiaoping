@@ -58,7 +58,7 @@ Observed 2026-05-27: `python -m pytest backend/tests/test_ai_provider_readiness.
 - Modify: `backend/app/services/ai_service.py`
 - Modify: `backend/app/api/routers/ai.py`
 
-- [ ] **Step 1: Add readiness evaluator**
+- [x] **Step 1: Add readiness evaluator**
 
 Add `AIService.get_agent_readiness(db, agent_id, user)` returning:
 
@@ -71,7 +71,7 @@ Add `AIService.get_agent_readiness(db, agent_id, user)` returning:
 - `checks[]`
 - `actions[]`
 
-- [ ] **Step 2: Implement provider rules**
+- [x] **Step 2: Implement provider rules**
 
 Rules:
 
@@ -81,7 +81,7 @@ Rules:
 - `gjt_link` and `manual_import`: manual_required.
 - unknown provider: unsupported.
 
-- [ ] **Step 3: Add route**
+- [x] **Step 3: Add route**
 
 Add:
 
@@ -91,7 +91,7 @@ async def get_agent_readiness(...):
     current_user = Depends(require_roles("system_admin", "school_admin", "admin", "super_admin"))
 ```
 
-- [ ] **Step 4: Run backend green test**
+- [x] **Step 4: Run backend green test**
 
 Run:
 
@@ -100,6 +100,8 @@ python -m pytest backend/tests/test_ai_provider_readiness.py -q
 ```
 
 Expected: pass.
+
+Observed 2026-05-27: `python -m pytest backend/tests/test_ai_provider_readiness.py -q` passed (`4 passed`). Neighbor checks also passed with `python -m pytest backend/tests/test_ai_provider_readiness.py backend/tests/test_domestic_provider_contract.py backend/tests/test_ai_agent_crud.py backend/tests/test_ai_contract_progress.py -q` (`15 passed`) and `python -m compileall backend\app`.
 
 ### Task 3: Frontend Readiness UI
 

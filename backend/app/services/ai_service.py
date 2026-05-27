@@ -17,6 +17,7 @@ Agent A's dependency injection (get_db, get_current_user, require_roles).
 
 import json
 import logging
+import os
 import uuid as _uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -195,6 +196,109 @@ class AIService:
         if agent is None:
             raise ResourceNotFoundException(f"AI智能体不存在: {agent_id}")
         return _agent_to_dict(agent)
+
+    async def get_agent_readiness(self, db: AsyncSession, agent_id: UUID, user: User) -> dict:
+        """Return local readiness diagnostics for one AI agent configuration."""
+        result = await db.execute(
+            select(AIAgent).where(
+                AIAgent.id == str(agent_id),
+                AIAgent.deleted_at.is_(None),
+            )
+        )
+        agent = result.scalar_one_or_none()
+        if agent is None:
+            raise ResourceNotFoundException(f"AI agent not found: {agent_id}")
+
+        provider = agent.provider or "mock"
+        config = agent.config or {}
+        checks: list[dict[str, str]] = []
+        actions: list[dict[str, str]] = []
+
+        def add_check(key: str, label: str, status: str, message: str) -> None:
+            checks.append({"key": key, "label": label, "status": status, "message": message})
+
+        def add_action(label: str, field: str) -> None:
+            actions.append({"label": label, "field": field})
+
+        registered = provider in self.gateway.get_available_providers()
+        if registered or provider in {"gjt_link", "manual_import"}:
+            add_check("provider_registered", "Provider注册", "ok", f"{provider} 已被本地契约识别")
+        else:
+            add_check("provider_registered", "Provider注册", "error", f"{provider} 未注册到本地网关")
+            return self._readiness_payload(
+                agent,
+                "unsupported",
+                "unknown",
+                "Provider未注册",
+                "当前 Provider 不在本地网关注册表中，不能发起调用。",
+                checks,
+                [{"label": "在后端 Provider 注册表中补充适配器", "field": "provider"}],
+            )
+
+        if provider == "mock":
+            add_check("mock_runtime", "Mock运行时", "ok", "Mock Provider 不需要外部接口、模型或密钥")
+            add_check("teacher_adoption_gate", "教师采纳门槛", "ok", "AI 草案仍需教师确认后才进入业务系统")
+            return self._readiness_payload(
+                agent,
+                "ready",
+                "mock",
+                "配置可运行",
+                "Mock 模式可用于开发、演示和无外网部署。",
+                checks,
+                actions,
+            )
+
+        if provider in {"manual_import", "gjt_link"}:
+            add_check("manual_flow", "人工回填流程", "warning", "该 Provider 需要教师或管理员手动粘贴结构化结果")
+            add_check("teacher_adoption_gate", "教师采纳门槛", "ok", "导入结果仍需教师审阅采纳")
+            add_action("在外部智能体完成生成后回填 JSON 草案", "manual_import")
+            return self._readiness_payload(
+                agent,
+                "manual_required",
+                "manual",
+                "需要人工回填",
+                "该模式不直接调用外部 API，适合比赛现场或离线流程。",
+                checks,
+                actions,
+            )
+
+        if provider == "gjt_api":
+            endpoint = config.get("endpoint") or self._setting("GJT_API_BASE_URL")
+            extra = config.get("extra") or {}
+            agent_id_value = config.get("agent_id") or extra.get("agent_id") or self._setting("GJT_AGENT_ID")
+            api_key = config.get("api_key") or self._setting("GJT_API_KEY")
+            self._check_required(checks, actions, "endpoint", "接口端点", endpoint, "配置桂教通 API 地址")
+            self._check_required(checks, actions, "agent_id", "智能体标识", agent_id_value, "配置桂教通智能体 ID")
+            if api_key:
+                add_check("api_key", "密钥来源", "ok", "已配置桂教通密钥来源")
+            else:
+                add_check("api_key", "密钥来源", "warning", "未检测到 API Key；若桂教通使用 SSO/IP 白名单可忽略")
+                add_action("如使用 Bearer/API Key 鉴权，请在后端环境变量中配置 GJT_API_KEY", "GJT_API_KEY")
+            return self._readiness_from_checks(agent, "api", checks, actions)
+
+        endpoint = config.get("endpoint") or self._setting("OPENAI_COMPATIBLE_API_BASE_URL")
+        model = config.get("model") or self._setting("OPENAI_COMPATIBLE_MODEL")
+        api_key_env = config.get("api_key_env")
+        raw_api_key = config.get("api_key") or self._setting("OPENAI_COMPATIBLE_API_KEY")
+        env_api_key = os.getenv(api_key_env, "") if api_key_env else ""
+
+        self._check_required(checks, actions, "endpoint", "接口端点", endpoint, "配置 OpenAI 兼容网关 endpoint")
+        self._check_required(checks, actions, "model", "模型标识", model, "配置模型标识")
+
+        if api_key_env:
+            if env_api_key:
+                add_check("api_key_env", "密钥来源", "ok", f"环境变量 {api_key_env} 已设置")
+            else:
+                add_check("api_key_env", "密钥来源", "error", f"环境变量未设置: {api_key_env}")
+                add_action(f"在后端环境变量中设置 {api_key_env}", "api_key_env")
+        elif raw_api_key:
+            add_check("api_key_env", "密钥来源", "warning", "检测到密钥来源，但建议改用 api_key_env")
+            add_action("把真实密钥迁移到后端环境变量，前端只保存变量名", "api_key_env")
+        else:
+            add_check("api_key_env", "密钥来源", "error", "缺少 api_key_env 或后端默认密钥")
+            add_action("配置 api_key_env，并在后端环境变量中设置真实密钥", "api_key_env")
+
+        return self._readiness_from_checks(agent, "api", checks, actions)
 
     async def update_agent(
         self, db: AsyncSession, agent_id: UUID, data: dict, user: User
@@ -560,6 +664,86 @@ class AIService:
             "status": call.status,
             "percent": percent,
             "steps": [self._step_to_dict(step) for step in steps],
+        }
+
+    def _setting(self, name: str) -> Optional[str]:
+        """Read provider readiness configuration from the process environment."""
+        value = os.getenv(name)
+        return value.strip() if value and value.strip() else None
+
+    def _check_required(
+        self,
+        checks: list[dict[str, str]],
+        actions: list[dict[str, str]],
+        key: str,
+        label: str,
+        value: Any,
+        action_label: str,
+    ) -> None:
+        if value:
+            checks.append({
+                "key": key,
+                "label": label,
+                "status": "ok",
+                "message": f"已配置{label}",
+            })
+        else:
+            checks.append({
+                "key": key,
+                "label": label,
+                "status": "error",
+                "message": f"缺少{label}",
+            })
+            actions.append({"label": action_label, "field": key})
+
+    def _readiness_from_checks(
+        self,
+        agent: AIAgent,
+        mode: str,
+        checks: list[dict[str, str]],
+        actions: list[dict[str, str]],
+    ) -> dict:
+        has_error = any(item["status"] == "error" for item in checks)
+        status = "not_configured" if has_error else "ready"
+        if status == "ready":
+            return self._readiness_payload(
+                agent,
+                status,
+                mode,
+                "配置可运行",
+                "Provider 前置配置完整，已具备发起调用条件。",
+                checks,
+                actions,
+            )
+        return self._readiness_payload(
+            agent,
+            status,
+            mode,
+            "缺少配置",
+            "Provider 仍缺少必要的本地配置，补齐前不建议发起真实调用。",
+            checks,
+            actions,
+        )
+
+    def _readiness_payload(
+        self,
+        agent: AIAgent,
+        status: str,
+        mode: str,
+        label: str,
+        summary: str,
+        checks: list[dict[str, str]],
+        actions: list[dict[str, str]],
+    ) -> dict:
+        return {
+            "agent_id": agent.id,
+            "provider": agent.provider or "mock",
+            "status": status,
+            "mode": mode,
+            "label": label,
+            "summary": summary,
+            "checks": checks,
+            "actions": actions,
         }
 
     async def _audit(
