@@ -32,7 +32,7 @@
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 - Modify: `docs/superpowers/plans/2026-05-28-trial-runbook-evidence.md`
 
-- [ ] **Step 1: Write the failing API tests**
+- [x] **Step 1: Write the failing API tests**
 
 Create `backend/tests/test_trial_runbook_records.py` with this content:
 
@@ -159,7 +159,7 @@ def test_trial_runbook_records_validate_stage_status_and_note_length():
     assert long_note_response.status_code == 422
 ```
 
-- [ ] **Step 2: Run the new backend test to verify the red state**
+- [x] **Step 2: Run the new backend test to verify the red state**
 
 Run:
 
@@ -169,7 +169,9 @@ python -m pytest backend/tests/test_trial_runbook_records.py -q
 
 Expected: fail because `/api/v1/dashboard/trial-operations/stages/{stage_key}/records` and `/api/v1/dashboard/trial-operations/records` are not implemented yet. The likely first failures are 404 responses from the create/list endpoints.
 
-- [ ] **Step 3: Update progress and commit the red tests**
+Observed 2026-05-28: `python -m pytest backend/tests/test_trial_runbook_records.py -q` failed as expected (`3 failed`, 5 warnings). The create endpoint returned 404 `{"detail":"Not Found"}`, proving the test is red because the runbook evidence API is missing.
+
+- [x] **Step 3: Update progress and commit the red tests**
 
 Update `docs/superpowers/progress/2026-05-25-platform-progress.md`:
 
