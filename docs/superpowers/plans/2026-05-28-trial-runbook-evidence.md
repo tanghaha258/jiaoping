@@ -200,7 +200,7 @@ Expected: commit and push succeed.
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 - Modify: `docs/superpowers/plans/2026-05-28-trial-runbook-evidence.md`
 
-- [ ] **Step 1: Add the request schema**
+- [x] **Step 1: Add the request schema**
 
 Create `backend/app/schemas/trial_runbook.py`:
 
@@ -220,7 +220,7 @@ class TrialRunbookRecordCreate(BaseModel):
     evidence: list[str] = Field(default_factory=list, max_length=8)
 ```
 
-- [ ] **Step 2: Add constants and serialization helpers**
+- [x] **Step 2: Add constants and serialization helpers**
 
 In `backend/app/services/dashboard_service.py`, add imports near the existing model imports:
 
@@ -278,7 +278,7 @@ Add these helpers near the other private helpers:
         }
 ```
 
-- [ ] **Step 3: Add create/list service methods**
+- [x] **Step 3: Add create/list service methods**
 
 In `backend/app/services/dashboard_service.py`, add these public methods after `get_trial_operations_runbook()`:
 
@@ -366,7 +366,7 @@ In `backend/app/services/dashboard_service.py`, add these public methods after `
         }
 ```
 
-- [ ] **Step 4: Add dashboard routes**
+- [x] **Step 4: Add dashboard routes**
 
 In `backend/app/api/routers/dashboard.py`, update imports:
 
@@ -428,7 +428,7 @@ async def list_trial_runbook_records(
     return success_response(data=data, message="试运行演练记录已获取")
 ```
 
-- [ ] **Step 5: Run targeted backend checks**
+- [x] **Step 5: Run targeted backend checks**
 
 Run:
 
@@ -439,7 +439,9 @@ python -m compileall backend\app
 
 Expected: all selected tests pass and backend compile succeeds.
 
-- [ ] **Step 6: Update progress and commit backend implementation**
+Observed 2026-05-28: `python -m pytest backend/tests/test_trial_runbook_records.py backend/tests/test_trial_operations_runbook.py backend/tests/test_trial_readiness.py -q` passed (`10 passed`, 5 warnings). `python -m compileall backend\app` also passed.
+
+- [x] **Step 6: Update progress and commit backend implementation**
 
 Update `docs/superpowers/progress/2026-05-25-platform-progress.md`:
 

@@ -8,8 +8,10 @@ from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.core.config import settings
+from app.models.audit_log import AuditLog
 from app.models.ai_agent import AIAgent
 from app.models.user import User
 from app.models.school import School
@@ -19,12 +21,24 @@ from app.models.project import Project
 from app.models.task import Task
 from app.models.resource import Resource
 from app.models.ai_agent_call import AIAgentCall
+from app.services.audit_service import create_audit_log
 
 logger = logging.getLogger(__name__)
 
 
 class DashboardService:
     """Service for dashboard aggregate statistics."""
+
+    TRIAL_RUNBOOK_STAGE_KEYS = {
+        "service_readiness",
+        "base_data",
+        "account_access",
+        "ai_provider_rehearsal",
+        "teaching_workflow",
+        "resource_and_backup",
+    }
+    TRIAL_RUNBOOK_RECORD_ACTION = "trial_runbook.record"
+    TRIAL_RUNBOOK_RECORD_TARGET_TYPE = "trial_runbook_stage"
 
     @staticmethod
     async def get_overview(
@@ -359,6 +373,89 @@ class DashboardService:
         }
 
     @staticmethod
+    async def create_trial_runbook_record(
+        db: AsyncSession,
+        user: User,
+        stage_key: str,
+        payload,
+        ip: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ) -> dict:
+        """Append one trial runbook rehearsal evidence record."""
+        DashboardService._validate_trial_runbook_stage(stage_key)
+        detail = {
+            "stage_key": stage_key,
+            "status": payload.status,
+            "note": payload.note.strip(),
+            "evidence": DashboardService._normalize_record_evidence(payload.evidence),
+        }
+        log = await create_audit_log(
+            db=db,
+            user_id=user.id,
+            action=DashboardService.TRIAL_RUNBOOK_RECORD_ACTION,
+            target_type=DashboardService.TRIAL_RUNBOOK_RECORD_TARGET_TYPE,
+            target_id=stage_key,
+            ip=ip,
+            user_agent=user_agent,
+            detail=detail,
+        )
+        if log is None:
+            raise RuntimeError("Failed to save trial runbook record")
+        log.user = user
+        return DashboardService._trial_runbook_record_to_dict(log)
+
+    @staticmethod
+    async def list_trial_runbook_records(
+        db: AsyncSession,
+        user: User,
+        stage_key: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 10,
+    ) -> dict:
+        """List recent trial runbook rehearsal evidence records."""
+        if stage_key:
+            DashboardService._validate_trial_runbook_stage(stage_key)
+
+        query = (
+            select(AuditLog)
+            .options(joinedload(AuditLog.user))
+            .where(AuditLog.action == DashboardService.TRIAL_RUNBOOK_RECORD_ACTION)
+            .where(AuditLog.target_type == DashboardService.TRIAL_RUNBOOK_RECORD_TARGET_TYPE)
+        )
+        count_query = (
+            select(func.count())
+            .select_from(AuditLog)
+            .where(AuditLog.action == DashboardService.TRIAL_RUNBOOK_RECORD_ACTION)
+            .where(AuditLog.target_type == DashboardService.TRIAL_RUNBOOK_RECORD_TARGET_TYPE)
+        )
+
+        if stage_key:
+            query = query.where(AuditLog.target_id == stage_key)
+            count_query = count_query.where(AuditLog.target_id == stage_key)
+
+        if user.role == "school_admin" and user.school_id:
+            query = query.join(User, AuditLog.user_id == User.id).where(
+                User.school_id == user.school_id
+            )
+            count_query = count_query.join(User, AuditLog.user_id == User.id).where(
+                User.school_id == user.school_id
+            )
+
+        total = (await db.execute(count_query)).scalar() or 0
+        offset = (page - 1) * page_size
+        result = await db.execute(
+            query.order_by(AuditLog.created_at.desc()).offset(offset).limit(page_size)
+        )
+        logs = result.unique().scalars().all()
+        return {
+            "items": [DashboardService._trial_runbook_record_to_dict(log) for log in logs],
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 0,
+        }
+
+    @staticmethod
     async def _count(db: AsyncSession, model, *conditions) -> int:
         stmt = select(func.count()).select_from(model)
         for condition in conditions:
@@ -430,6 +527,34 @@ class DashboardService:
         if status == "warning":
             return "提醒"
         return "阻断"
+
+    @staticmethod
+    def _validate_trial_runbook_stage(stage_key: str) -> None:
+        if stage_key not in DashboardService.TRIAL_RUNBOOK_STAGE_KEYS:
+            raise ValueError("Unknown trial operations stage")
+
+    @staticmethod
+    def _normalize_record_evidence(evidence: list[str]) -> list[str]:
+        normalized = []
+        for item in evidence[:8]:
+            text = str(item).strip()
+            if text:
+                normalized.append(text[:300])
+        return normalized
+
+    @staticmethod
+    def _trial_runbook_record_to_dict(log: AuditLog) -> dict:
+        detail = log.detail or {}
+        return {
+            "id": log.id,
+            "stage_key": detail.get("stage_key") or log.target_id,
+            "status": detail.get("status"),
+            "note": detail.get("note") or "",
+            "evidence": detail.get("evidence") or [],
+            "operator_id": log.user_id,
+            "operator_name": log.user.name if log.user else None,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        }
 
     @staticmethod
     def _ai_provider_runbook_stage(ai_item: Optional[dict]) -> dict:

@@ -3,12 +3,14 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user, get_db, require_roles
-from app.core.response import success_response
+from app.core.response import error_response, success_response
 from app.models.user import User
+from app.schemas.trial_runbook import TrialRunbookRecordCreate
 from app.services.dashboard_service import DashboardService
 
 logger = logging.getLogger(__name__)
@@ -98,6 +100,53 @@ async def get_trial_operations_runbook(
     """Get the stage-by-stage operations runbook for local trial rehearsal."""
     data = await DashboardService.get_trial_operations_runbook(db=db)
     return success_response(data=data, message="试运行演练台已生成")
+
+
+@router.post("/trial-operations/stages/{stage_key}/records")
+async def create_trial_runbook_record(
+    stage_key: str,
+    payload: TrialRunbookRecordCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("system_admin", "school_admin", "region_admin")),
+):
+    """Append one rehearsal evidence record for a trial operations stage."""
+    try:
+        data = await DashboardService.create_trial_runbook_record(
+            db=db,
+            user=current_user,
+            stage_key=stage_key,
+            payload=payload,
+            ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except ValueError as exc:
+        return JSONResponse(status_code=400, content=error_response(400001, str(exc)))
+    except RuntimeError as exc:
+        return JSONResponse(status_code=500, content=error_response(500001, str(exc)))
+    return success_response(data=data, message="Trial runbook record saved")
+
+
+@router.get("/trial-operations/records")
+async def list_trial_runbook_records(
+    stage_key: Optional[str] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("system_admin", "school_admin", "region_admin")),
+):
+    """List recent rehearsal evidence records for the trial operations runbook."""
+    try:
+        data = await DashboardService.list_trial_runbook_records(
+            db=db,
+            user=current_user,
+            stage_key=stage_key,
+            page=page,
+            page_size=page_size,
+        )
+    except ValueError as exc:
+        return JSONResponse(status_code=400, content=error_response(400001, str(exc)))
+    return success_response(data=data, message="Trial runbook records loaded")
 
 
 @router.get("/project-trends")
