@@ -50,12 +50,38 @@ export interface TrialReadiness {
   items: TrialReadinessItem[]
 }
 
+export interface TrialOperationsStage {
+  key: string
+  title: string
+  status: TrialReadinessItemStatus
+  owner: string
+  route: string
+  primary_action: string
+  evidence: string[]
+  next_step: string
+}
+
+export interface TrialOperationsRunbook {
+  status: TrialReadinessStatus
+  checked_at: string
+  summary: {
+    ok: number
+    warning: number
+    error: number
+  }
+  stages: TrialOperationsStage[]
+}
+
 export function getDashboardOverview(): Promise<ApiResponse<DashboardOverview>> {
   return request.get('/dashboard/overview')
 }
 
 export function getTrialReadiness(): Promise<ApiResponse<TrialReadiness>> {
   return request.get('/dashboard/trial-readiness')
+}
+
+export function getTrialOperationsRunbook(): Promise<ApiResponse<TrialOperationsRunbook>> {
+  return request.get('/dashboard/trial-operations/runbook')
 }
 
 export function getProjectTrends(): Promise<ApiResponse<ProjectTrends>> {

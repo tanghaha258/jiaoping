@@ -66,6 +66,55 @@
       </div>
     </section>
 
+    <section class="runbook-panel">
+      <div class="runbook-head">
+        <div>
+          <p class="eyebrow">试运行演练台</p>
+          <h2>演练阶段</h2>
+          <p>按运营顺序串联 readiness 证据、责任角色和下一步处理入口。</p>
+        </div>
+        <div class="readiness-summary">
+          <span>Provider演练</span>
+          <el-tag :type="runbookTagType" effect="dark">
+            {{ trialRunbook.status === 'ready' ? '演练可继续' : '需要处理' }}
+          </el-tag>
+          <span>正常 {{ trialRunbook.summary.ok }}</span>
+          <span>提醒 {{ trialRunbook.summary.warning }}</span>
+          <span>阻断 {{ trialRunbook.summary.error }}</span>
+        </div>
+      </div>
+
+      <div class="runbook-list">
+        <article v-for="stage in trialRunbook.stages" :key="stage.key" class="runbook-stage">
+          <div class="stage-top">
+            <el-tag :type="itemTagType(stage.status)" effect="light">
+              {{ itemStatusText(stage.status) }}
+            </el-tag>
+            <h3>{{ stage.title }}</h3>
+          </div>
+          <dl>
+            <div>
+              <dt>责任角色</dt>
+              <dd>{{ stage.owner }}</dd>
+            </div>
+            <div>
+              <dt>证据</dt>
+              <dd>
+                <span v-for="evidence in stage.evidence" :key="evidence">{{ evidence }}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>下一步</dt>
+              <dd>{{ stage.next_step }}</dd>
+            </div>
+          </dl>
+          <el-button text type="primary" :icon="ArrowRight" @click="goTo(stage.route)">
+            {{ stage.primary_action }}
+          </el-button>
+        </article>
+      </div>
+    </section>
+
     <section class="content-grid">
       <el-card shadow="never" class="section-card">
         <template #header>
@@ -122,12 +171,14 @@ import {
   getAIUsage,
   getDashboardOverview,
   getProjectTrends,
+  getTrialOperationsRunbook,
   getTrialReadiness
 } from '@/api/dashboard'
 import type {
   AIUsage,
   DashboardOverview,
   ProjectTrends,
+  TrialOperationsRunbook,
   TrialReadiness,
   TrialReadinessItemStatus
 } from '@/api/dashboard'
@@ -152,6 +203,12 @@ const readiness = ref<TrialReadiness>({
   checked_at: '',
   summary: { ok: 0, warning: 0, error: 0 },
   items: []
+})
+const trialRunbook = ref<TrialOperationsRunbook>({
+  status: 'action_required',
+  checked_at: '',
+  summary: { ok: 0, warning: 0, error: 0 },
+  stages: []
 })
 
 const metrics = computed(() => [
@@ -186,6 +243,9 @@ const readinessStatusText = computed(() => (
 const overallTagType = computed(() => (
   readiness.value.status === 'ready' ? 'success' : 'danger'
 ))
+const runbookTagType = computed(() => (
+  trialRunbook.value.status === 'ready' ? 'success' : 'danger'
+))
 
 function itemTagType(status: TrialReadinessItemStatus) {
   if (status === 'ok') return 'success'
@@ -206,16 +266,18 @@ function goTo(route: string) {
 async function loadData() {
   loading.value = true
   try {
-    const [overviewRes, trendsRes, aiRes, readinessRes] = await Promise.all([
+    const [overviewRes, trendsRes, aiRes, readinessRes, runbookRes] = await Promise.all([
       getDashboardOverview(),
       getProjectTrends(),
       getAIUsage(),
-      getTrialReadiness()
+      getTrialReadiness(),
+      getTrialOperationsRunbook()
     ])
     overview.value = overviewRes.data
     trends.value = trendsRes.data
     aiUsage.value = aiRes.data
     readiness.value = readinessRes.data
+    trialRunbook.value = runbookRes.data
   } catch (e: any) {
     ElMessage.error(e?.message || '加载驾驶舱数据失败')
   } finally {
@@ -235,7 +297,8 @@ onMounted(loadData)
 .header-band,
 .metric-card,
 .section-card,
-.readiness-panel {
+.readiness-panel,
+.runbook-panel {
   border-radius: 8px;
   background: #fff;
 }
@@ -309,6 +372,79 @@ onMounted(loadData)
   margin: 4px 0 8px;
   color: #1f2f5f;
   font-size: 20px;
+}
+
+.runbook-panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #e4e7ed;
+}
+
+.runbook-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.runbook-head h2 {
+  margin: 4px 0 8px;
+  color: #1f2f5f;
+  font-size: 20px;
+}
+
+.runbook-head p {
+  margin: 0;
+  color: #606266;
+}
+
+.runbook-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.runbook-stage {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #fbfcff;
+}
+
+.stage-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stage-top h3 {
+  margin: 0;
+  color: #1f2f5f;
+  font-size: 15px;
+}
+
+.runbook-stage dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.runbook-stage dt {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.runbook-stage dd {
+  margin: 2px 0 0;
+  color: #303133;
+  font-size: 13px;
+}
+
+.runbook-stage dd span {
+  display: block;
+  line-height: 1.5;
 }
 
 .readiness-summary {
@@ -405,6 +541,7 @@ onMounted(loadData)
 @media (max-width: 760px) {
   .header-band,
   .readiness-head,
+  .runbook-head,
   .check-item {
     flex-direction: column;
     align-items: stretch;

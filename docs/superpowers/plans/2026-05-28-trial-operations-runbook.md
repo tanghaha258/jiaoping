@@ -440,7 +440,7 @@ Expected: commit and push succeed.
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 - Modify: `docs/superpowers/plans/2026-05-28-trial-operations-runbook.md`
 
-- [ ] **Step 1: Write the failing frontend static test**
+- [x] **Step 1: Write the failing frontend static test**
 
 Create `backend/tests/test_admin_dashboard_trial_ops.py`:
 
@@ -497,7 +497,9 @@ python -m pytest backend/tests/test_admin_dashboard_trial_ops.py -q
 
 Expected: fail because API types, dashboard anchors, and route smoke anchors are not implemented yet.
 
-- [ ] **Step 2: Add API types and request**
+Observed 2026-05-28: `python -m pytest backend/tests/test_admin_dashboard_trial_ops.py -q` failed as expected (`3 failed`, 1 warning). The failures showed missing `试运行演练台`, missing `TrialOperationsRunbook`, and missing route-smoke runbook anchors.
+
+- [x] **Step 2: Add API types and request**
 
 In `frontend/src/api/dashboard.ts`, add these interfaces after `TrialReadiness`:
 
@@ -533,7 +535,7 @@ export function getTrialOperationsRunbook(): Promise<ApiResponse<TrialOperations
 }
 ```
 
-- [ ] **Step 3: Render the runbook panel**
+- [x] **Step 3: Render the runbook panel**
 
 In `frontend/src/views/admin/AdminDashboard.vue`:
 
@@ -696,7 +698,7 @@ Add mobile rule beside the existing media block:
 }
 ```
 
-- [ ] **Step 4: Update route smoke anchors**
+- [x] **Step 4: Update route smoke anchors**
 
 In `scripts/check_frontend_route_smoke.py`, change the Admin Dashboard expectation anchors from:
 
@@ -710,7 +712,7 @@ to:
 ("管理驾驶舱", "试运行检查清单", "试运行演练台", "演练阶段", "Provider演练")
 ```
 
-- [ ] **Step 5: Run frontend targeted checks**
+- [x] **Step 5: Run frontend targeted checks**
 
 Run:
 
@@ -721,7 +723,9 @@ npm run build
 
 Expected: all tests pass and frontend build succeeds.
 
-- [ ] **Step 6: Update progress and commit frontend implementation**
+Observed 2026-05-28: `python -m pytest backend/tests/test_admin_dashboard_trial_ops.py backend/tests/test_frontend_route_smoke.py backend/tests/test_frontend_text_health.py -q` passed (`9 passed`, 1 warning). `npm run build` passed with existing Vite/Sass chunk-size and deprecation warnings.
+
+- [x] **Step 6: Update progress and commit frontend implementation**
 
 Update `docs/superpowers/progress/2026-05-25-platform-progress.md`:
 
