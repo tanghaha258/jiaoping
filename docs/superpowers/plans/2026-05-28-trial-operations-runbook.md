@@ -31,7 +31,7 @@
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 - Modify: `docs/superpowers/plans/2026-05-28-trial-operations-runbook.md`
 
-- [ ] **Step 1: Write the failing API tests**
+- [x] **Step 1: Write the failing API tests**
 
 Create `backend/tests/test_trial_operations_runbook.py` with this initial content:
 
@@ -174,7 +174,7 @@ def test_ai_provider_stage_links_to_ai_call_diagnostics_when_recent_real_provide
     assert "Provider" in ai_stage["title"]
 ```
 
-- [ ] **Step 2: Run the new test to confirm the red state**
+- [x] **Step 2: Run the new test to confirm the red state**
 
 Run:
 
@@ -184,7 +184,9 @@ python -m pytest backend/tests/test_trial_operations_runbook.py -q
 
 Expected: fail with 404 for `/api/v1/dashboard/trial-operations/runbook` because the route is not implemented yet.
 
-- [ ] **Step 3: Update progress and commit the red tests**
+Observed 2026-05-28: `python -m pytest backend/tests/test_trial_operations_runbook.py -q` failed as expected (`3 failed`, 5 warnings). The public runbook API returned 404 `{"detail":"Not Found"}`, proving the tests are red because the endpoint is missing.
+
+- [x] **Step 3: Update progress and commit the red tests**
 
 Update `docs/superpowers/progress/2026-05-25-platform-progress.md`:
 
