@@ -79,6 +79,12 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Harden backend error metadata, diagnostics aggregation, AI call filters, and trial readiness linkage.
   - [x] Add AI call diagnostics UI.
   - [x] Run release verification and browser smoke.
+- [ ] Phase 11: Build trial operations runbook and Provider rehearsal loop.
+  - [x] Confirm P11 Batch 1 dashboard-centered runbook design.
+  - [ ] Write P11 Batch 1 implementation plan.
+  - [ ] Add backend runbook contract and tests.
+  - [ ] Add admin dashboard runbook UI.
+  - [ ] Run release verification, browser smoke, commit, and push.
 
 ## Decisions
 
@@ -93,6 +99,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - Local SQLite backup uses timestamped file copies, and restore creates a pre-restore safety backup by default.
 - Frontend text checks must read files as UTF-8 directly. PowerShell `Get-Content` can display Chinese as mojibake in this environment, so terminal rendering alone is not accepted as evidence of source corruption.
 - Phase 10 AI architecture remains provider-neutral: GJT is needed for the competition integration, while local contracts must also support mock, local model, and OpenAI-compatible providers later.
+- Phase 11 Batch 1 will extend the Admin Dashboard instead of adding a new route: the trial operations runbook should group existing readiness evidence into ordered rehearsal stages and keep Provider rehearsal behind the local AI contract.
 
 ## Completed Work
 
@@ -100,6 +107,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - 2026-05-28: Completed P10 Batch 3 backend diagnostics checkpoint. Added safe `diagnostic_metadata` to provider results and AI call persistence, classified provider/config/upstream/contract failures, exposed `error_category` and `/api/v1/ai/calls/diagnostics/summary`, preserved seeded string IDs in the AI call path, fixed async agent lazy-loading in call serialization, and linked real-provider configuration/failure risk into trial readiness. Verified with `python -m compileall backend\app`, `python -m pytest backend/tests/test_ai_call_failure_observability.py backend/tests/test_ai_provider_readiness.py backend/tests/test_domestic_provider_contract.py -q` (`16 passed`, 5 warnings), and the dedicated readiness target (`5 passed`, 5 warnings).
 - 2026-05-28: Completed P10 Batch 3 frontend diagnostics UI. Added AI call diagnostic metadata/summary TypeScript contracts, `error_category` filtering for `/admin/ai-calls`, diagnostics summary cards, failure-category table column, and a detail-drawer diagnosis panel showing failure category, retryability, remediation, upstream status, and safe metadata. Verified with `python -m pytest backend/tests/test_ai_call_page_polish.py backend/tests/test_frontend_route_smoke.py backend/tests/test_frontend_text_health.py -q` (`7 passed`, 1 warning) and `npm run build`.
 - 2026-05-28: Completed P10 Batch 3 release verification and browser smoke. Stabilized the thinking-progress smoke test to select the mock lesson-plan agent instead of relying on agent ordering after real-provider diagnostics tests create new agents. `scripts/check-release.ps1` passed with backend tests (`51 passed`, 5 warnings), backend compile, frontend text health, route smoke (`checked_routes=27`), and frontend build. Browser smoke confirmed `/admin/ai-calls` renders `AI调用观测`, `失败诊断`, `失败类别`, `近期失败`, and `调用台账`; `/admin` renders `管理驾驶舱`, `试运行检查清单`, and `AI 智能体契约`; both pages had no browser console errors or warnings after restarting the local backend to current code.
+- 2026-05-28: Started P11 Batch 1 for a trial operations runbook and Provider rehearsal loop. Added `docs/superpowers/specs/2026-05-28-trial-operations-runbook-design.md`, choosing a dashboard-centered `试运行演练台` over a new route so admins can rehearse service readiness, base data, accounts, AI Provider readiness, teaching workflow, resources, and backup from one operational surface.
 - 2026-05-27: Started AI provider readiness Task 1 using the superpowers executing-plans/TDD flow. Added backend readiness tests covering system-admin agent creation, `ready`, `not_configured`, `manual_required`, `unsupported`, school-admin access, teacher blocking, and missing-agent 404. Verified the red state with `python -m pytest backend/tests/test_ai_provider_readiness.py -q` (`4 failed`) because `/api/v1/ai/agents/{agent_id}/readiness` is not routed yet.
 - 2026-05-27: Completed AI provider readiness Task 2 backend implementation. Added local-only readiness diagnostics in `AIService`, exposed `GET /api/v1/ai/agents/{agent_id}/readiness` for system/school admins, and covered mock, manual, GJT, domestic/OpenAI-compatible, missing config, and unsupported-provider cases. Verified with `python -m pytest backend/tests/test_ai_provider_readiness.py -q` (`4 passed`), AI neighbor checks (`15 passed`), and `python -m compileall backend\app`.
 - 2026-05-27: Completed AI provider readiness Task 3 frontend implementation. Added `getAgentReadiness`, readiness response types, a row-level `配置自检` action, a readiness status column, and a detail-drawer readiness panel with endpoint/model/key-source checks and status legend. Verified the frontend red-green cycle with `python -m pytest backend/tests/test_ai_agent_page_polish.py -q` failing first on missing `配置自检`, then targeted frontend checks passing (`7 passed`) and `npm run build` passing.
