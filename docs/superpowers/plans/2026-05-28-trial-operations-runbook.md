@@ -214,7 +214,7 @@ Expected: commit and push succeed. If push fails due transient network reset, in
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 - Modify: `docs/superpowers/plans/2026-05-28-trial-operations-runbook.md`
 
-- [ ] **Step 1: Add the route**
+- [x] **Step 1: Add the route**
 
 In `backend/app/api/routers/dashboard.py`, add this route immediately after `get_trial_readiness`:
 
@@ -229,7 +229,7 @@ async def get_trial_operations_runbook(
     return success_response(data=data, message="试运行演练台已生成")
 ```
 
-- [ ] **Step 2: Add runbook service helpers**
+- [x] **Step 2: Add runbook service helpers**
 
 In `backend/app/services/dashboard_service.py`, add `get_trial_operations_runbook()` after `get_trial_readiness()`:
 
@@ -386,7 +386,7 @@ Add AI/resource specialized helpers after `_stage_evidence()`:
         ) | {"status": status}
 ```
 
-- [ ] **Step 3: Run targeted backend tests**
+- [x] **Step 3: Run targeted backend tests**
 
 Run:
 
@@ -396,7 +396,9 @@ python -m pytest backend/tests/test_trial_operations_runbook.py backend/tests/te
 
 Expected: all selected tests pass.
 
-- [ ] **Step 4: Compile backend**
+Observed 2026-05-28: `python -m pytest backend/tests/test_trial_operations_runbook.py backend/tests/test_trial_readiness.py backend/tests/test_ai_call_failure_observability.py::test_trial_readiness_warns_when_recent_real_provider_failure_exists -q` passed (`8 passed`, 5 warnings).
+
+- [x] **Step 4: Compile backend**
 
 Run:
 
@@ -406,7 +408,9 @@ python -m compileall backend\app
 
 Expected: compile succeeds.
 
-- [ ] **Step 5: Update progress and commit backend implementation**
+Observed 2026-05-28: `python -m compileall backend\app` passed.
+
+- [x] **Step 5: Update progress and commit backend implementation**
 
 Update `docs/superpowers/progress/2026-05-25-platform-progress.md`:
 

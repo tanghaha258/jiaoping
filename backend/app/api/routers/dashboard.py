@@ -90,6 +90,16 @@ async def get_trial_readiness(
     return success_response(data=data, message="试运行检查完成")
 
 
+@router.get("/trial-operations/runbook")
+async def get_trial_operations_runbook(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("system_admin", "school_admin", "region_admin")),
+):
+    """Get the stage-by-stage operations runbook for local trial rehearsal."""
+    data = await DashboardService.get_trial_operations_runbook(db=db)
+    return success_response(data=data, message="试运行演练台已生成")
+
+
 @router.get("/project-trends")
 async def get_project_trends(
     db: AsyncSession = Depends(get_db),

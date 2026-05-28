@@ -299,6 +299,66 @@ class DashboardService:
         }
 
     @staticmethod
+    async def get_trial_operations_runbook(db: AsyncSession) -> dict:
+        """Return ordered trial rehearsal stages derived from readiness evidence."""
+        readiness = await DashboardService.get_trial_readiness(db)
+        items = {item["key"]: item for item in readiness["items"]}
+        stages = [
+            DashboardService._runbook_stage(
+                key="service_readiness",
+                title="服务与数据可用",
+                owner="平台管理员",
+                items=[items.get("service_readiness")],
+                route="/admin",
+                primary_action="查看 readiness",
+                next_step="确认本地服务、数据库和上传目录可用后，进入基础数据检查。",
+            ),
+            DashboardService._runbook_stage(
+                key="base_data",
+                title="基础数据演练",
+                owner="区县/学校管理员",
+                items=[items.get("organization_data")],
+                route="/admin/schools",
+                primary_action="核对学校班级学科",
+                next_step="学校、班级和学科齐备后，继续核对试点账号。",
+            ),
+            DashboardService._runbook_stage(
+                key="account_access",
+                title="账号登录演练",
+                owner="学校管理员",
+                items=[items.get("user_accounts")],
+                route="/admin/users",
+                primary_action="核对教师学生账号",
+                next_step="确认教师和学生账号可以登录，并准备初始密码发放清单。",
+            ),
+            DashboardService._ai_provider_runbook_stage(items.get("ai_contract")),
+            DashboardService._runbook_stage(
+                key="teaching_workflow",
+                title="教学闭环演练",
+                owner="试点教师",
+                items=[items.get("teaching_workflow"), items.get("student_task_availability")],
+                route="/teacher/projects",
+                primary_action="演练项目到任务闭环",
+                next_step="确认教师可创建或采纳项目，学生端可看到已发布任务。",
+            ),
+            DashboardService._resource_backup_runbook_stage(
+                items.get("resources"),
+                items.get("backup_path"),
+            ),
+        ]
+        summary = {
+            "ok": sum(1 for stage in stages if stage["status"] == "ok"),
+            "warning": sum(1 for stage in stages if stage["status"] == "warning"),
+            "error": sum(1 for stage in stages if stage["status"] == "error"),
+        }
+        return {
+            "status": "action_required" if summary["error"] else "ready",
+            "checked_at": readiness["checked_at"],
+            "summary": summary,
+            "stages": stages,
+        }
+
+    @staticmethod
     async def _count(db: AsyncSession, model, *conditions) -> int:
         stmt = select(func.count()).select_from(model)
         for condition in conditions:
@@ -324,6 +384,88 @@ class DashboardService:
             "action": action,
             "route": route,
         }
+
+    @staticmethod
+    def _runbook_stage(
+        key: str,
+        title: str,
+        owner: str,
+        items: list[Optional[dict]],
+        route: str,
+        primary_action: str,
+        next_step: str,
+    ) -> dict:
+        present_items = [item for item in items if item]
+        return {
+            "key": key,
+            "title": title,
+            "status": DashboardService._worst_status(present_items),
+            "owner": owner,
+            "route": route,
+            "primary_action": primary_action,
+            "evidence": DashboardService._stage_evidence(present_items),
+            "next_step": next_step,
+        }
+
+    @staticmethod
+    def _worst_status(items: list[dict]) -> str:
+        order = {"ok": 0, "warning": 1, "error": 2}
+        if not items:
+            return "warning"
+        return max((item["status"] for item in items), key=lambda status: order.get(status, 1))
+
+    @staticmethod
+    def _stage_evidence(items: list[dict]) -> list[str]:
+        if not items:
+            return ["暂无 readiness 证据"]
+        return [
+            f"{item['label']}：{item['metric']}（{DashboardService._status_label(item['status'])}）"
+            for item in items
+        ]
+
+    @staticmethod
+    def _status_label(status: str) -> str:
+        if status == "ok":
+            return "正常"
+        if status == "warning":
+            return "提醒"
+        return "阻断"
+
+    @staticmethod
+    def _ai_provider_runbook_stage(ai_item: Optional[dict]) -> dict:
+        route = "/admin/ai-agents"
+        action = "执行 Provider 配置自检"
+        next_step = "保持 mock/manual 可演练；真实 Provider 接入前先完成配置自检，再查看失败诊断。"
+        if ai_item and ai_item.get("route") == "/admin/ai-calls":
+            route = "/admin/ai-calls"
+            action = "查看 AI 调用诊断"
+            next_step = "先处理近期真实 Provider 调用失败，再继续教师侧生成演练。"
+        return DashboardService._runbook_stage(
+            key="ai_provider_rehearsal",
+            title="AI Provider演练",
+            owner="平台管理员",
+            items=[ai_item],
+            route=route,
+            primary_action=action,
+            next_step=next_step,
+        )
+
+    @staticmethod
+    def _resource_backup_runbook_stage(resource_item: Optional[dict], backup_item: Optional[dict]) -> dict:
+        route = "/teacher/resources" if resource_item and resource_item.get("status") != "ok" else "/admin"
+        action = "补齐资源或执行备份"
+        if backup_item and backup_item.get("status") != "ok":
+            route = "/admin"
+            action = "核对备份路径"
+        return DashboardService._runbook_stage(
+            key="resource_and_backup",
+            title="资源与备份演练",
+            owner="平台管理员",
+            items=[resource_item, backup_item],
+            route=route,
+            primary_action=action,
+            next_step="确认演示资源可用，并在正式试运行前完成一次 SQLite 备份演练。",
+        )
 
     @staticmethod
     def _service_readiness_item() -> dict:
