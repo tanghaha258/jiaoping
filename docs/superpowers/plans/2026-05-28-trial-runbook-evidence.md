@@ -468,7 +468,7 @@ Expected: commit and push succeed.
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 - Modify: `docs/superpowers/plans/2026-05-28-trial-runbook-evidence.md`
 
-- [ ] **Step 1: Write the failing frontend static tests**
+- [x] **Step 1: Write the failing frontend static tests**
 
 Create `backend/tests/test_admin_dashboard_runbook_records.py`:
 
@@ -520,7 +520,7 @@ def test_route_smoke_protects_runbook_record_anchors():
         assert label in text
 ```
 
-- [ ] **Step 2: Run the static tests to verify the red state**
+- [x] **Step 2: Run the static tests to verify the red state**
 
 Run:
 
@@ -530,7 +530,9 @@ python -m pytest backend/tests/test_admin_dashboard_runbook_records.py -q
 
 Expected: fail because the dashboard API helpers, dialog anchors, and route-smoke anchors are not implemented yet.
 
-- [ ] **Step 3: Update progress and commit the red tests**
+Observed 2026-05-28: `python -m pytest backend/tests/test_admin_dashboard_runbook_records.py -q` failed as expected (`3 failed`, 1 warning). The failures showed missing `TrialRunbookRecord`, missing `最近演练记录`, and missing route-smoke record anchors.
+
+- [x] **Step 3: Update progress and commit the red tests**
 
 Update `docs/superpowers/progress/2026-05-25-platform-progress.md`:
 
