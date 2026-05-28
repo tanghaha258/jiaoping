@@ -191,9 +191,9 @@
         <el-form label-position="top">
           <el-form-item label="演练结论">
             <el-radio-group v-model="recordForm.status">
-              <el-radio-button label="checked">已检查</el-radio-button>
-              <el-radio-button label="blocked">有阻断</el-radio-button>
-              <el-radio-button label="skipped">已跳过</el-radio-button>
+              <el-radio-button value="checked">已检查</el-radio-button>
+              <el-radio-button value="blocked">有阻断</el-radio-button>
+              <el-radio-button value="skipped">已跳过</el-radio-button>
             </el-radio-group>
           </el-form-item>
           <el-form-item label="备注">

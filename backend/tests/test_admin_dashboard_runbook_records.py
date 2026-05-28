@@ -38,6 +38,14 @@ def test_admin_dashboard_renders_runbook_record_workflow():
         assert label in text
 
 
+def test_runbook_record_status_radio_uses_value_prop_to_avoid_console_warning():
+    text = PAGE.read_text(encoding="utf-8")
+
+    for status in ["checked", "blocked", "skipped"]:
+        assert f'<el-radio-button value="{status}">' in text
+        assert f'<el-radio-button label="{status}">' not in text
+
+
 def test_route_smoke_protects_runbook_record_anchors():
     text = ROUTE_SMOKE.read_text(encoding="utf-8")
 

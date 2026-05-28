@@ -907,7 +907,7 @@ Expected: commit and push succeed.
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 - Modify: `docs/superpowers/plans/2026-05-28-trial-runbook-evidence.md`
 
-- [ ] **Step 1: Run the full release check**
+- [x] **Step 1: Run the full release check**
 
 Run:
 
@@ -917,7 +917,9 @@ powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1
 
 Expected: backend tests pass, backend compile passes, frontend text health passes, route smoke passes, and frontend build passes.
 
-- [ ] **Step 2: Browser smoke `/admin`**
+Observed 2026-05-28: `powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1` passed. Backend tests reported `64 passed`, backend compile passed, frontend text health passed, route smoke passed with `checked_routes=27`, and frontend build completed with existing Rollup pure-comment, Sass legacy API, and chunk-size warnings.
+
+- [x] **Step 2: Browser smoke `/admin`**
 
 Start or reuse the local backend/frontend services. Open:
 
@@ -940,7 +942,9 @@ Verify:
 - Saving a record closes the dialog and appends it to `最近演练记录`.
 - Browser console has no new errors or warnings.
 
-- [ ] **Step 3: Update progress and complete P11 Batch 2**
+Observed 2026-05-28: restarted local backend/frontend to current code and browser-smoked `http://127.0.0.1:3000/admin`. The page rendered six `记录演练` actions, the dialog rendered `演练结论`, `证据`, and `保存记录`, saving a record added it under `最近演练记录`, and browser console error/warning logs were empty after switching `el-radio-button` from deprecated `label` value binding to `value`.
+
+- [x] **Step 3: Update progress and complete P11 Batch 2**
 
 Update the Phase 11 checklist in `docs/superpowers/progress/2026-05-25-platform-progress.md`:
 
