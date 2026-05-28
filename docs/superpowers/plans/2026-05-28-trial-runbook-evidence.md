@@ -561,7 +561,7 @@ Expected: commit and push succeed.
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 - Modify: `docs/superpowers/plans/2026-05-28-trial-runbook-evidence.md`
 
-- [ ] **Step 1: Add dashboard API types and helpers**
+- [x] **Step 1: Add dashboard API types and helpers**
 
 In `frontend/src/api/dashboard.ts`, add these types after the existing runbook types:
 
@@ -605,7 +605,7 @@ export function getTrialRunbookRecords(params?: {
 }
 ```
 
-- [ ] **Step 2: Add dashboard record state and handlers**
+- [x] **Step 2: Add dashboard record state and handlers**
 
 In `frontend/src/views/admin/AdminDashboard.vue`, update the dashboard API import:
 
@@ -714,7 +714,7 @@ const stageTitle = (stageKey: string) => (
 )
 ```
 
-- [ ] **Step 3: Add record actions, recent strip, and dialog markup**
+- [x] **Step 3: Add record actions, recent strip, and dialog markup**
 
 Inside each `.runbook-stage`, keep the existing route action and add the record action:
 
@@ -792,7 +792,7 @@ Add the dialog near the bottom of the template:
 </el-dialog>
 ```
 
-- [ ] **Step 4: Add CSS and route smoke anchors**
+- [x] **Step 4: Add CSS and route smoke anchors**
 
 In `frontend/src/views/admin/AdminDashboard.vue`, add compact styles:
 
@@ -868,7 +868,7 @@ In `frontend/src/views/admin/AdminDashboard.vue`, add compact styles:
 
 In `scripts/check_frontend_route_smoke.py`, add `"最近演练记录"` and `"记录演练"` to the `/admin` anchors.
 
-- [ ] **Step 5: Run targeted frontend checks**
+- [x] **Step 5: Run targeted frontend checks**
 
 Run:
 
@@ -879,7 +879,9 @@ npm run build
 
 Expected: all tests pass and frontend build succeeds.
 
-- [ ] **Step 6: Update progress and commit frontend implementation**
+Observed 2026-05-28: `python -m pytest backend/tests/test_admin_dashboard_runbook_records.py backend/tests/test_admin_dashboard_trial_ops.py backend/tests/test_frontend_route_smoke.py backend/tests/test_frontend_text_health.py -q` passed (`12 passed`, 1 warning). `npm run build` passed with existing Rollup pure-comment, Sass legacy API, and chunk-size warnings.
+
+- [x] **Step 6: Update progress and commit frontend implementation**
 
 Update `docs/superpowers/progress/2026-05-25-platform-progress.md`:
 

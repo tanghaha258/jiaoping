@@ -108,10 +108,35 @@
               <dd>{{ stage.next_step }}</dd>
             </div>
           </dl>
-          <el-button text type="primary" :icon="ArrowRight" @click="goTo(stage.route)">
-            {{ stage.primary_action }}
-          </el-button>
+          <div class="stage-actions">
+            <el-button text type="primary" :icon="ArrowRight" @click="goTo(stage.route)">
+              {{ stage.primary_action }}
+            </el-button>
+            <el-button text type="primary" :icon="DocumentChecked" @click="openRecordDialog(stage)">
+              记录演练
+            </el-button>
+          </div>
         </article>
+      </div>
+
+      <div class="recent-runbook-records">
+        <div class="recent-head">
+          <h3>最近演练记录</h3>
+          <span>{{ recentRunbookRecords.length }} 条</span>
+        </div>
+        <div v-if="recentRunbookRecords.length" class="record-list">
+          <article v-for="record in recentRunbookRecords" :key="record.id" class="record-item">
+            <div class="record-meta">
+              <strong>{{ stageTitle(record.stage_key) }}</strong>
+              <span>{{ record.operator_name || '管理员' }}</span>
+            </div>
+            <el-tag :type="recordTagType(record.status)" effect="light">
+              {{ recordStatusText(record.status) }}
+            </el-tag>
+            <p>{{ record.note || '未填写备注' }}</p>
+          </article>
+        </div>
+        <el-empty v-else description="暂无演练记录" :image-size="72" />
       </div>
     </section>
 
@@ -159,6 +184,41 @@
         </el-table>
       </el-card>
     </section>
+
+    <el-dialog v-model="recordDialogVisible" title="记录演练" width="560px">
+      <div v-if="selectedRunbookStage" class="record-dialog">
+        <h3>{{ selectedRunbookStage.title }}</h3>
+        <el-form label-position="top">
+          <el-form-item label="演练结论">
+            <el-radio-group v-model="recordForm.status">
+              <el-radio-button label="checked">已检查</el-radio-button>
+              <el-radio-button label="blocked">有阻断</el-radio-button>
+              <el-radio-button label="skipped">已跳过</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input
+              v-model="recordForm.note"
+              type="textarea"
+              :rows="4"
+              maxlength="500"
+              show-word-limit
+            />
+          </el-form-item>
+          <el-form-item label="证据">
+            <div class="dialog-evidence">
+              <span v-for="item in recordForm.evidence" :key="item">{{ item }}</span>
+            </div>
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button @click="recordDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="recordSubmitting" @click="submitRunbookRecord">
+          保存记录
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -166,21 +226,27 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowRight, Refresh } from '@element-plus/icons-vue'
+import { ArrowRight, DocumentChecked, Refresh } from '@element-plus/icons-vue'
 import {
+  createTrialRunbookRecord,
   getAIUsage,
   getDashboardOverview,
   getProjectTrends,
   getTrialOperationsRunbook,
-  getTrialReadiness
+  getTrialReadiness,
+  getTrialRunbookRecords
 } from '@/api/dashboard'
 import type {
   AIUsage,
   DashboardOverview,
   ProjectTrends,
   TrialOperationsRunbook,
+  TrialOperationsStage,
   TrialReadiness,
-  TrialReadinessItemStatus
+  TrialReadinessItemStatus,
+  TrialRunbookRecord,
+  TrialRunbookRecordCreate,
+  TrialRunbookRecordStatus
 } from '@/api/dashboard'
 
 const router = useRouter()
@@ -209,6 +275,15 @@ const trialRunbook = ref<TrialOperationsRunbook>({
   checked_at: '',
   summary: { ok: 0, warning: 0, error: 0 },
   stages: []
+})
+const recentRunbookRecords = ref<TrialRunbookRecord[]>([])
+const recordDialogVisible = ref(false)
+const recordSubmitting = ref(false)
+const selectedRunbookStage = ref<TrialOperationsStage | null>(null)
+const recordForm = ref<TrialRunbookRecordCreate>({
+  status: 'checked',
+  note: '',
+  evidence: []
 })
 
 const metrics = computed(() => [
@@ -259,6 +334,51 @@ function itemStatusText(status: TrialReadinessItemStatus) {
   return '阻断'
 }
 
+function recordStatusText(status: TrialRunbookRecordStatus) {
+  const map: Record<TrialRunbookRecordStatus, string> = {
+    checked: '已检查',
+    blocked: '有阻断',
+    skipped: '已跳过'
+  }
+  return map[status]
+}
+
+function recordTagType(status: TrialRunbookRecordStatus) {
+  if (status === 'checked') return 'success'
+  if (status === 'blocked') return 'warning'
+  return 'info'
+}
+
+function stageTitle(stageKey: string) {
+  return trialRunbook.value.stages.find((stage) => stage.key === stageKey)?.title || stageKey
+}
+
+function openRecordDialog(stage: TrialOperationsStage) {
+  selectedRunbookStage.value = stage
+  recordForm.value = {
+    status: stage.status === 'error' ? 'blocked' : 'checked',
+    note: '',
+    evidence: [...stage.evidence]
+  }
+  recordDialogVisible.value = true
+}
+
+async function submitRunbookRecord() {
+  if (!selectedRunbookStage.value) return
+  recordSubmitting.value = true
+  try {
+    await createTrialRunbookRecord(selectedRunbookStage.value.key, recordForm.value)
+    ElMessage.success('演练记录已保存')
+    recordDialogVisible.value = false
+    const recordsRes = await getTrialRunbookRecords({ page: 1, page_size: 6 })
+    recentRunbookRecords.value = recordsRes.data.items
+  } catch (error) {
+    ElMessage.error('演练记录保存失败')
+  } finally {
+    recordSubmitting.value = false
+  }
+}
+
 function goTo(route: string) {
   router.push(route)
 }
@@ -266,18 +386,20 @@ function goTo(route: string) {
 async function loadData() {
   loading.value = true
   try {
-    const [overviewRes, trendsRes, aiRes, readinessRes, runbookRes] = await Promise.all([
+    const [overviewRes, trendsRes, aiRes, readinessRes, runbookRes, recordsRes] = await Promise.all([
       getDashboardOverview(),
       getProjectTrends(),
       getAIUsage(),
       getTrialReadiness(),
-      getTrialOperationsRunbook()
+      getTrialOperationsRunbook(),
+      getTrialRunbookRecords({ page: 1, page_size: 6 })
     ])
     overview.value = overviewRes.data
     trends.value = trendsRes.data
     aiUsage.value = aiRes.data
     readiness.value = readinessRes.data
     trialRunbook.value = runbookRes.data
+    recentRunbookRecords.value = recordsRes.data.items
   } catch (e: any) {
     ElMessage.error(e?.message || '加载驾驶舱数据失败')
   } finally {
@@ -445,6 +567,87 @@ onMounted(loadData)
 .runbook-stage dd span {
   display: block;
   line-height: 1.5;
+}
+
+.stage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recent-runbook-records {
+  padding-top: 14px;
+  border-top: 1px solid #e4e7ed;
+}
+
+.recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.recent-head h3 {
+  margin: 0;
+  color: #1f2f5f;
+  font-size: 15px;
+}
+
+.recent-head span {
+  color: #606266;
+  font-size: 13px;
+}
+
+.record-list {
+  display: grid;
+  gap: 8px;
+}
+
+.record-item {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.record-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.record-meta strong,
+.record-dialog h3 {
+  color: #1f2f5f;
+  font-size: 14px;
+}
+
+.record-meta span,
+.record-item p {
+  color: #606266;
+  font-size: 13px;
+}
+
+.record-item p {
+  margin: 0;
+}
+
+.dialog-evidence {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+.dialog-evidence span {
+  padding: 8px;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  color: #303133;
+  font-size: 13px;
 }
 
 .readiness-summary {

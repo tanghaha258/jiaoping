@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { ApiResponse } from '@/types/api'
+import type { ApiResponse, PaginatedData } from '@/types/api'
 
 export interface DashboardOverview {
   schools: number
@@ -72,6 +72,25 @@ export interface TrialOperationsRunbook {
   stages: TrialOperationsStage[]
 }
 
+export type TrialRunbookRecordStatus = 'checked' | 'blocked' | 'skipped'
+
+export interface TrialRunbookRecord {
+  id: string
+  stage_key: string
+  status: TrialRunbookRecordStatus
+  note: string
+  evidence: string[]
+  operator_id: string
+  operator_name?: string
+  created_at?: string
+}
+
+export interface TrialRunbookRecordCreate {
+  status: TrialRunbookRecordStatus
+  note: string
+  evidence: string[]
+}
+
 export function getDashboardOverview(): Promise<ApiResponse<DashboardOverview>> {
   return request.get('/dashboard/overview')
 }
@@ -82,6 +101,21 @@ export function getTrialReadiness(): Promise<ApiResponse<TrialReadiness>> {
 
 export function getTrialOperationsRunbook(): Promise<ApiResponse<TrialOperationsRunbook>> {
   return request.get('/dashboard/trial-operations/runbook')
+}
+
+export function createTrialRunbookRecord(
+  stageKey: string,
+  data: TrialRunbookRecordCreate
+): Promise<ApiResponse<TrialRunbookRecord>> {
+  return request.post(`/dashboard/trial-operations/stages/${stageKey}/records`, data)
+}
+
+export function getTrialRunbookRecords(params?: {
+  stage_key?: string
+  page?: number
+  page_size?: number
+}): Promise<ApiResponse<PaginatedData<TrialRunbookRecord>>> {
+  return request.get('/dashboard/trial-operations/records', { params })
 }
 
 export function getProjectTrends(): Promise<ApiResponse<ProjectTrends>> {
