@@ -751,7 +751,7 @@ Expected: commit and push succeed.
 - Modify: `docs/superpowers/progress/2026-05-25-platform-progress.md`
 - Modify: `docs/superpowers/plans/2026-05-28-trial-operations-runbook.md`
 
-- [ ] **Step 1: Run the full release check**
+- [x] **Step 1: Run the full release check**
 
 Run:
 
@@ -761,7 +761,9 @@ scripts/check-release.ps1
 
 Expected: backend tests pass, backend compile passes, frontend text health passes, route smoke passes, and frontend build passes.
 
-- [ ] **Step 2: Browser smoke `/admin`**
+Observed 2026-05-28: `powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1` passed. Backend tests reported `57 passed`, backend compile passed, frontend text health passed, route smoke passed with `checked_routes=27`, and frontend build completed with existing Vite/Sass warnings.
+
+- [x] **Step 2: Browser smoke `/admin`**
 
 Start or reuse the local backend/frontend services. Open:
 
@@ -789,7 +791,9 @@ Verify visible anchors:
 
 Also verify the browser console has no new errors or warnings.
 
-- [ ] **Step 3: Update progress and complete P11 Batch 1**
+Observed 2026-05-28: restarted the local backend/frontend so port 8000 served the new `/api/v1/dashboard/trial-operations/runbook` endpoint. Browser-smoked `http://127.0.0.1:3000/admin` as the existing admin session and confirmed visible text includes `管理驾驶舱`, `试运行检查清单`, `试运行演练台`, `演练阶段`, `Provider演练`, `责任角色`, `证据`, and `下一步`. Browser console error/warning logs were empty. Screenshot capture was attempted after the DOM smoke, but the browser automation connection reset during screenshot capture; this did not affect the visible text and console verification.
+
+- [x] **Step 3: Update progress and complete P11 Batch 1**
 
 Update the Phase 11 checklist in `docs/superpowers/progress/2026-05-25-platform-progress.md`:
 
