@@ -110,6 +110,104 @@ class DashboardService:
             "purpose": "演示学习任务查看、作品提交和反馈查看。",
         },
     ]
+    TRIAL_DELIVERY_PRINTABLE_ACCEPTANCE = {
+        "title": "现场验收确认单",
+        "purpose": "确认试点现场能够演示教学评一体化闭环、AI 使用证据、安全权限边界和交付材料完整性。",
+        "required_signoffs": ["平台管理员", "学校管理员", "试点教师"],
+        "statements": [
+            "已确认服务、数据库、上传目录和备份路径可用。",
+            "已确认教师、学生、学校管理员账号可登录，并已准备独立的密码发放清单。",
+            "已确认 AI 输出需经教师审核采纳后进入业务闭环。",
+            "已确认本交付材料不包含密码哈希、API Key、JWT Secret 或 Provider 密钥。",
+        ],
+    }
+    TRIAL_DELIVERY_FALLBACK_PROCEDURES = [
+        {
+            "key": "network_unavailable",
+            "title": "现场网络不可用",
+            "trigger": "前端页面或后端健康检查无法访问。",
+            "owner": "平台管理员",
+            "steps": [
+                "优先使用本机演示环境访问 http://127.0.0.1:3000。",
+                "确认后端健康检查 http://127.0.0.1:8000/api/v1/health 是否可用。",
+                "如外网不可用，使用已下载的 Markdown/JSON 交付材料完成讲解。",
+            ],
+            "evidence": ["本机服务健康检查截图", "离线交付包 Markdown/JSON 文件"],
+        },
+        {
+            "key": "provider_unavailable",
+            "title": "AI Provider 不可用",
+            "trigger": "真实 Provider 配置缺失、超时或返回失败。",
+            "owner": "平台管理员",
+            "steps": [
+                "在 AI 智能体治理页执行配置自检。",
+                "保留 Mock 或人工回填模式完成教学方案演示。",
+                "在 AI 调用观测页展示失败类别、补救建议和审计记录。",
+            ],
+            "evidence": ["Provider 配置自检结果", "AI 调用失败诊断记录", "Mock/人工回填演示记录"],
+        },
+        {
+            "key": "account_access_issue",
+            "title": "账号无法登录",
+            "trigger": "教师、学生或学校管理员无法使用试点账号进入对应页面。",
+            "owner": "学校管理员",
+            "steps": [
+                "在用户管理页核对账号状态、角色和所属学校/班级。",
+                "由系统管理员执行密码重置并重新发放临时密码。",
+                "记录重置操作，正式试点前再次要求用户修改密码。",
+            ],
+            "evidence": ["用户管理账号状态", "密码重置审计记录", "重新登录截图"],
+        },
+        {
+            "key": "backup_restore",
+            "title": "数据备份或恢复演练",
+            "trigger": "试点前需要确认 SQLite 数据和 uploads 目录可恢复。",
+            "owner": "平台管理员",
+            "steps": [
+                "执行 SQLite 备份脚本并保存时间戳文件。",
+                "恢复前生成安全备份，避免覆盖当前演示数据。",
+                "恢复后重新访问 readiness 和交付包页面确认数据可读。",
+            ],
+            "evidence": ["备份文件路径", "恢复前安全备份路径", "恢复后 readiness 截图"],
+        },
+    ]
+    TRIAL_DELIVERY_ROLE_HANDOFFS = [
+        {
+            "role": "platform_admin",
+            "title": "平台管理员交接卡",
+            "route": "/admin/trial-delivery",
+            "checklist": ["下载交付材料", "核对 readiness", "确认 AI Provider 状态", "保存备份路径"],
+            "handoff_note": "负责现场技术状态、Provider 兜底、备份恢复和最终交付材料归档。",
+        },
+        {
+            "role": "school_admin",
+            "title": "学校管理员交接卡",
+            "route": "/admin/users",
+            "checklist": ["核对学校班级", "核对教师学生账号", "保管初始密码发放清单"],
+            "handoff_note": "负责试点学校组织数据、账号发放和现场账号问题协调。",
+        },
+        {
+            "role": "teacher",
+            "title": "试点教师交接卡",
+            "route": "/teacher/projects",
+            "checklist": ["打开跨学科项目", "演示 AI 教学方案", "发布任务并确认评价"],
+            "handoff_note": "负责展示教学设计、学习任务、评价反馈和教师采纳 AI 的边界。",
+        },
+        {
+            "role": "student",
+            "title": "学生体验交接卡",
+            "route": "/student/tasks",
+            "checklist": ["查看已发布任务", "提交学习成果", "查看教师确认后的反馈"],
+            "handoff_note": "负责展示学生端任务参与、成果提交和反馈查看。",
+        },
+        {
+            "role": "reviewer",
+            "title": "评委验收交接卡",
+            "route": "/admin/ai-calls",
+            "checklist": ["查看完整演示脚本", "核对 AI 使用证据", "核对权限和审计边界"],
+            "handoff_note": "聚焦教学闭环、AI 证据、安全合规和可推广材料。",
+        },
+    ]
 
     @staticmethod
     async def get_overview(
@@ -560,6 +658,9 @@ class DashboardService:
             "acceptance_checklist": checklist,
             "demo_script": DashboardService.TRIAL_DELIVERY_DEMO_SCRIPT,
             "accounts": DashboardService.TRIAL_DELIVERY_ACCOUNTS,
+            "printable_acceptance": DashboardService.TRIAL_DELIVERY_PRINTABLE_ACCEPTANCE,
+            "fallback_procedures": DashboardService.TRIAL_DELIVERY_FALLBACK_PROCEDURES,
+            "role_handoffs": DashboardService.TRIAL_DELIVERY_ROLE_HANDOFFS,
         }
         package["materials"] = {
             "markdown": DashboardService._trial_delivery_markdown(package),
@@ -679,6 +780,42 @@ class DashboardService:
                 f"- {account['role']} / {account['username']}："
                 f"{account['purpose']}（{account['password_hint']}）"
             )
+
+        printable = package["printable_acceptance"]
+        lines.extend(["", "## 打印验收说明", ""])
+        lines.append(f"### {printable['title']}")
+        lines.append(f"- 用途：{printable['purpose']}")
+        lines.append(f"- 需确认角色：{'、'.join(printable['required_signoffs'])}")
+        lines.append("- 确认事项：")
+        for statement in printable["statements"]:
+            lines.append(f"  - {statement}")
+
+        lines.extend(["", "## 异常处置流程", ""])
+        for procedure in package["fallback_procedures"]:
+            lines.extend([
+                f"### {procedure['title']}",
+                f"- 触发条件：{procedure['trigger']}",
+                f"- 责任角色：{procedure['owner']}",
+                "- 处理步骤：",
+            ])
+            for step in procedure["steps"]:
+                lines.append(f"  - {step}")
+            lines.append("- 留存证据：")
+            for evidence in procedure["evidence"]:
+                lines.append(f"  - {evidence}")
+            lines.append("")
+
+        lines.extend(["## 分角色交接卡", ""])
+        for handoff in package["role_handoffs"]:
+            lines.extend([
+                f"### {handoff['title']}",
+                f"- 入口：{handoff['route']}",
+                f"- 交接说明：{handoff['handoff_note']}",
+                "- 核对项：",
+            ])
+            for item in handoff["checklist"]:
+                lines.append(f"  - {item}")
+            lines.append("")
 
         lines.extend([
             "",

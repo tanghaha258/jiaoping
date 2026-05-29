@@ -46,7 +46,7 @@ ROUTE_EXPECTATIONS: tuple[RouteExpectation, ...] = (
     RouteExpectation("path: 'resources'", "views/research/ResourceReview.vue", "资源审核", ("资源审核",)),
     RouteExpectation("path: '/admin'", "layouts/AppLayout.vue", "管理后台"),
     RouteExpectation("path: ''", "views/admin/AdminDashboard.vue", "驾驶舱", ("管理驾驶舱", "试运行检查清单", "试运行演练台", "演练阶段", "Provider演练", "记录演练", "最近演练记录")),
-    RouteExpectation("path: 'trial-delivery'", "views/admin/TrialDeliveryPackage.vue", "试点交付包", ("试点交付包", "现场验收清单", "演示脚本", "测试账号交付", "下载 Markdown", "下载 JSON", "复制交付材料")),
+    RouteExpectation("path: 'trial-delivery'", "views/admin/TrialDeliveryPackage.vue", "试点交付包", ("试点交付包", "现场验收清单", "演示脚本", "测试账号交付", "打印验收说明", "异常处置流程", "分角色交接卡", "下载 Markdown", "下载 JSON", "复制交付材料")),
     RouteExpectation("path: 'users'", "views/admin/UserManagement.vue", "用户管理", ("用户管理", "导入账号包")),
     RouteExpectation("path: 'schools'", "views/admin/SchoolManagement.vue", "学校管理", ("学校管理", "导入数据包")),
     RouteExpectation("path: 'ai-agents'", "views/admin/AIAgentConfig.vue", "AI智能体", ("AI智能体治理", "本地契约层", "Provider适配")),

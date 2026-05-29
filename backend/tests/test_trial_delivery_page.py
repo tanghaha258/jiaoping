@@ -17,6 +17,9 @@ def test_dashboard_api_exposes_trial_delivery_package_contract():
         "TrialDeliveryChecklistItem",
         "TrialDeliveryDemoStep",
         "TrialDeliveryAccount",
+        "TrialDeliveryPrintableAcceptance",
+        "TrialDeliveryFallbackProcedure",
+        "TrialDeliveryRoleHandoff",
         "getTrialDeliveryPackage",
         "/dashboard/trial-delivery/package",
     ]:
@@ -50,6 +53,9 @@ def test_trial_delivery_page_renders_package_workflow():
         "现场验收清单",
         "演示脚本",
         "测试账号交付",
+        "打印验收说明",
+        "异常处置流程",
+        "分角色交接卡",
         "复制交付材料",
         "下载 Markdown",
         "下载 JSON",
@@ -69,6 +75,9 @@ def test_route_smoke_protects_trial_delivery_page():
         "TrialDeliveryPackage.vue",
         "试点交付包",
         "现场验收清单",
+        "打印验收说明",
+        "异常处置流程",
+        "分角色交接卡",
         "下载 Markdown",
     ]:
         assert label in text

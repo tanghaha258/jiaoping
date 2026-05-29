@@ -50,6 +50,42 @@ def test_admin_can_view_trial_delivery_package():
     assert any(step["route"] == "/student/tasks" for step in package["demo_script"])
     assert any(step["route"] == "/admin/ai-calls" for step in package["demo_script"])
 
+    printable = package["printable_acceptance"]
+    assert printable["title"] == "现场验收确认单"
+    assert "教学评一体化" in printable["purpose"]
+    assert {"平台管理员", "学校管理员", "试点教师"}.issubset(
+        set(printable["required_signoffs"])
+    )
+    assert any("不包含密码" in item for item in printable["statements"])
+
+    fallback_keys = {item["key"] for item in package["fallback_procedures"]}
+    assert fallback_keys == {
+        "network_unavailable",
+        "provider_unavailable",
+        "account_access_issue",
+        "backup_restore",
+    }
+    for procedure in package["fallback_procedures"]:
+        assert procedure["title"]
+        assert procedure["trigger"]
+        assert procedure["owner"]
+        assert procedure["steps"]
+        assert procedure["evidence"]
+
+    handoff_roles = {item["role"] for item in package["role_handoffs"]}
+    assert {
+        "platform_admin",
+        "school_admin",
+        "teacher",
+        "student",
+        "reviewer",
+    }.issubset(handoff_roles)
+    for handoff in package["role_handoffs"]:
+        assert handoff["title"]
+        assert handoff["route"]
+        assert handoff["checklist"]
+        assert handoff["handoff_note"]
+
     account_usernames = {item["username"] for item in package["accounts"]}
     assert {"admin", "schooladmin", "teacher001", "student001"}.issubset(account_usernames)
     for account in package["accounts"]:
@@ -62,7 +98,13 @@ def test_admin_can_view_trial_delivery_package():
     assert "现场验收清单" in package["materials"]["markdown"]
     assert "演示脚本" in package["materials"]["markdown"]
     assert "测试账号交付" in package["materials"]["markdown"]
+    assert "打印验收说明" in package["materials"]["markdown"]
+    assert "异常处置流程" in package["materials"]["markdown"]
+    assert "分角色交接卡" in package["materials"]["markdown"]
     assert '"acceptance_checklist"' in package["materials"]["json"]
+    assert '"fallback_procedures"' in package["materials"]["json"]
+    assert "password_hash" not in package["materials"]["json"]
+    assert "JWT_SECRET" not in package["materials"]["markdown"]
 
 
 def test_school_admin_can_view_delivery_package_and_teacher_is_blocked():

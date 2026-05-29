@@ -105,6 +105,65 @@
       </article>
     </section>
 
+    <section class="delivery-grid">
+      <article class="delivery-section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">打印验收说明</p>
+            <h2>打印验收说明</h2>
+          </div>
+        </div>
+        <div class="printable-block">
+          <strong>{{ packageData.printable_acceptance.title }}</strong>
+          <p>{{ packageData.printable_acceptance.purpose }}</p>
+          <span>需确认角色：{{ packageData.printable_acceptance.required_signoffs.join('、') }}</span>
+          <ul>
+            <li v-for="statement in packageData.printable_acceptance.statements" :key="statement">
+              {{ statement }}
+            </li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="delivery-section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">异常处置流程</p>
+            <h2>异常处置流程</h2>
+          </div>
+        </div>
+        <div class="procedure-list">
+          <div v-for="procedure in packageData.fallback_procedures" :key="procedure.key" class="procedure-item">
+            <strong>{{ procedure.title }}</strong>
+            <span>{{ procedure.owner }} · {{ procedure.trigger }}</span>
+            <ol>
+              <li v-for="step in procedure.steps" :key="step">{{ step }}</li>
+            </ol>
+            <p>留存证据：{{ procedure.evidence.join('、') }}</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="delivery-section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">分角色交接卡</p>
+          <h2>分角色交接卡</h2>
+        </div>
+      </div>
+      <div class="handoff-grid">
+        <article v-for="handoff in packageData.role_handoffs" :key="handoff.role" class="handoff-card">
+          <strong>{{ handoff.title }}</strong>
+          <span>{{ handoff.route }}</span>
+          <p>{{ handoff.handoff_note }}</p>
+          <ul>
+            <li v-for="item in handoff.checklist" :key="item">{{ item }}</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
     <section class="delivery-section">
       <div class="section-head">
         <div>
@@ -151,6 +210,14 @@ const packageData = ref<TrialDeliveryPackage>({
   acceptance_checklist: [],
   demo_script: [],
   accounts: [],
+  printable_acceptance: {
+    title: '',
+    purpose: '',
+    required_signoffs: [],
+    statements: []
+  },
+  fallback_procedures: [],
+  role_handoffs: [],
   materials: {
     markdown: '',
     json: ''
@@ -327,7 +394,8 @@ onMounted(loadPackage)
 }
 
 .evidence-list,
-.account-list {
+.account-list,
+.procedure-list {
   display: grid;
   gap: 8px;
 }
@@ -383,9 +451,55 @@ onMounted(loadPackage)
   color: #152b4a;
 }
 
+.printable-block,
+.procedure-item,
+.handoff-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e3ebf6;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.printable-block strong,
+.procedure-item strong,
+.handoff-card strong {
+  color: #152b4a;
+}
+
+.printable-block p,
+.procedure-item p,
+.handoff-card p {
+  margin: 0;
+  color: #344966;
+}
+
+.printable-block span,
+.procedure-item span,
+.handoff-card span {
+  color: #1f6feb;
+  font-size: 13px;
+}
+
+.printable-block ul,
+.procedure-item ol,
+.handoff-card ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #344966;
+}
+
+.handoff-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
 @media (max-width: 1100px) {
   .summary-grid,
-  .delivery-grid {
+  .delivery-grid,
+  .handoff-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -398,7 +512,8 @@ onMounted(loadPackage)
   }
 
   .summary-grid,
-  .delivery-grid {
+  .delivery-grid,
+  .handoff-grid {
     grid-template-columns: 1fr;
   }
 }

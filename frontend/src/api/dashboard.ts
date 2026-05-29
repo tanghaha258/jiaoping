@@ -146,6 +146,30 @@ export interface TrialDeliveryAccount {
   purpose: string
 }
 
+export interface TrialDeliveryPrintableAcceptance {
+  title: string
+  purpose: string
+  required_signoffs: string[]
+  statements: string[]
+}
+
+export interface TrialDeliveryFallbackProcedure {
+  key: string
+  title: string
+  trigger: string
+  owner: string
+  steps: string[]
+  evidence: string[]
+}
+
+export interface TrialDeliveryRoleHandoff {
+  role: string
+  title: string
+  route: string
+  checklist: string[]
+  handoff_note: string
+}
+
 export interface TrialDeliveryPackage {
   status: TrialDeliveryPackageStatus
   generated_at: string
@@ -154,6 +178,9 @@ export interface TrialDeliveryPackage {
   acceptance_checklist: TrialDeliveryChecklistItem[]
   demo_script: TrialDeliveryDemoStep[]
   accounts: TrialDeliveryAccount[]
+  printable_acceptance: TrialDeliveryPrintableAcceptance
+  fallback_procedures: TrialDeliveryFallbackProcedure[]
+  role_handoffs: TrialDeliveryRoleHandoff[]
   materials: {
     markdown: string
     json: string

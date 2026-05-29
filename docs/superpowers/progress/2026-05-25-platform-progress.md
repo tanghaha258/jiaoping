@@ -90,7 +90,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Add runbook evidence record APIs and tests.
   - [x] Add admin dashboard evidence recording UI.
   - [x] Run release verification, browser smoke, commit, and push.
-- [ ] Phase 12: Build trial delivery package and onsite acceptance materials.
+- [x] Phase 12: Build trial delivery package and onsite acceptance materials.
   - [x] Confirm P12 direction as an in-platform delivery center with downloadable materials.
   - [x] Add P12 delivery package design.
   - [x] Write P12 Batch 1 implementation plan.
@@ -98,6 +98,10 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Add read-only delivery package aggregation endpoint.
   - [x] Add admin delivery package page and download actions.
   - [x] Run release verification, browser smoke, commit, and push.
+  - [x] Write P12 Batch 2 implementation plan.
+  - [x] Add printable acceptance, fallback procedures, and role handoff materials.
+  - [x] Render onsite material sections on `/admin/trial-delivery`.
+  - [x] Run release verification and browser smoke.
 
 ## Decisions
 
@@ -119,6 +123,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 
 ## Completed Work
 
+- 2026-05-29: Completed P12 Batch 2 and closed Phase 12. Added printable acceptance wording, fallback procedures, and role-specific handoff cards to `GET /api/v1/dashboard/trial-delivery/package`, including Markdown/JSON material output without password hashes or secrets. Rendered `打印验收说明`, `异常处置流程`, and `分角色交接卡` on `/admin/trial-delivery`, protected the anchors with static route smoke, and verified the release gate with backend tests (`71 passed`, 5 warnings), backend compile, frontend text health, route smoke (`checked_routes=28`), and frontend build. Browser smoke opened `http://127.0.0.1:3000/admin/trial-delivery` as admin and confirmed all three new sections rendered with zero browser console errors or warnings.
 - 2026-05-29: Completed P12 Batch 1 release verification and browser smoke. Restarted local backend/frontend from the current workspace after finding stale services on ports 8000/3000, confirmed `GET /api/v1/dashboard/trial-delivery/package` returns the delivery package data and Markdown/JSON materials for `admin`, and ran `scripts/check-release.ps1` successfully with backend tests (`71 passed`, 5 warnings), backend compile, frontend text health, route smoke (`checked_routes=28`), and frontend build. Browser smoke logged in as `admin`, opened `http://127.0.0.1:3000/admin/trial-delivery`, confirmed visible anchors `试点交付包`, `现场验收清单`, `演示脚本`, `测试账号交付`, `复制交付材料`, `下载 Markdown`, and `下载 JSON`, with zero browser console errors or warnings. Copy/download handlers are covered by the page implementation and static route/build checks; the in-app browser download/clipboard automation channel was unstable when directly inspecting those events.
 - 2026-05-29: Started P12 Batch 1 Task 1 backend TDD. Added `backend/tests/test_trial_delivery_package.py` covering admin access, school-admin access, teacher blocking, required delivery package shape, readiness/runbook evidence, safe account handout wording, Markdown/JSON material output, and blocked runbook evidence status. Verified the red state with `python -m pytest backend/tests/test_trial_delivery_package.py -q` (`3 failed`, 5 warnings) because `/api/v1/dashboard/trial-delivery/package` is not implemented yet and returns 404.
 - 2026-05-29: Completed P12 Batch 1 backend delivery package endpoint. Added read-only `GET /api/v1/dashboard/trial-delivery/package`, reusing readiness, runbook stages, and AuditLog-backed rehearsal records to produce acceptance checklist data, safe account handout guidance, demo script steps, and Markdown/JSON materials without exposing secrets. Verified with `python -m pytest backend/tests/test_trial_delivery_package.py backend/tests/test_trial_runbook_records.py backend/tests/test_trial_operations_runbook.py backend/tests/test_trial_readiness.py -q` (`13 passed`, 5 warnings) and `python -m compileall backend\app`.
