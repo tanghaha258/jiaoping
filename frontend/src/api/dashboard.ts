@@ -91,6 +91,75 @@ export interface TrialRunbookRecordCreate {
   evidence: string[]
 }
 
+export type TrialDeliveryPackageStatus = 'ready' | 'action_required'
+
+export interface TrialDeliverySummary {
+  readiness_ok: number
+  readiness_warning: number
+  readiness_error: number
+  runbook_checked: number
+  runbook_blocked: number
+  runbook_skipped: number
+}
+
+export interface TrialDeliveryAudienceSection {
+  key: string
+  title: string
+  items: string[]
+}
+
+export interface TrialDeliveryLatestRecord {
+  id: string
+  stage_key: string
+  status: TrialRunbookRecordStatus
+  note: string
+  evidence: string[]
+  operator_id: string
+  operator_name?: string
+  created_at?: string
+}
+
+export interface TrialDeliveryChecklistItem {
+  key: string
+  title: string
+  status: TrialReadinessItemStatus
+  route: string
+  owner: string
+  primary_action: string
+  evidence: string[]
+  next_step: string
+  latest_record?: TrialDeliveryLatestRecord | null
+}
+
+export interface TrialDeliveryDemoStep {
+  step: number
+  role: string
+  title: string
+  route: string
+  expected_evidence: string
+}
+
+export interface TrialDeliveryAccount {
+  role: string
+  username: string
+  password_hint: string
+  purpose: string
+}
+
+export interface TrialDeliveryPackage {
+  status: TrialDeliveryPackageStatus
+  generated_at: string
+  summary: TrialDeliverySummary
+  audience_sections: TrialDeliveryAudienceSection[]
+  acceptance_checklist: TrialDeliveryChecklistItem[]
+  demo_script: TrialDeliveryDemoStep[]
+  accounts: TrialDeliveryAccount[]
+  materials: {
+    markdown: string
+    json: string
+  }
+}
+
 export function getDashboardOverview(): Promise<ApiResponse<DashboardOverview>> {
   return request.get('/dashboard/overview')
 }
@@ -116,6 +185,10 @@ export function getTrialRunbookRecords(params?: {
   page_size?: number
 }): Promise<ApiResponse<PaginatedData<TrialRunbookRecord>>> {
   return request.get('/dashboard/trial-operations/records', { params })
+}
+
+export function getTrialDeliveryPackage(): Promise<ApiResponse<TrialDeliveryPackage>> {
+  return request.get('/dashboard/trial-delivery/package')
 }
 
 export function getProjectTrends(): Promise<ApiResponse<ProjectTrends>> {

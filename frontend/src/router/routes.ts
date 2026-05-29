@@ -180,6 +180,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '驾驶舱' }
       },
       {
+        path: 'trial-delivery',
+        name: 'TrialDeliveryPackage',
+        component: () => import('@/views/admin/TrialDeliveryPackage.vue'),
+        meta: { title: '试点交付包' }
+      },
+      {
         path: 'users',
         name: 'UserManagement',
         component: () => import('@/views/admin/UserManagement.vue'),

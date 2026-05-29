@@ -140,6 +140,7 @@ const menuByRole: Record<string, MenuSection[]> = {
       title: '平台治理',
       items: [
         { index: '/admin', label: '驾驶舱', icon: Odometer, actionable: true },
+        { index: '/admin/trial-delivery', label: '试点交付包', icon: Tickets, actionable: true },
         { index: '/admin/users', label: '用户管理', icon: UserFilled, actionable: true },
         { index: '/admin/schools', label: '学校管理', icon: OfficeBuilding, actionable: true },
         { index: '/admin/ai-agents', label: 'AI智能体', icon: Cpu, actionable: true },
@@ -167,7 +168,7 @@ const activeMenu = computed(() => {
 
 function handleSelect(index: string) {
   const path = index.split('?')[0]
-  const availableRoots = ['/teacher', '/teacher/ai/lesson-plan', '/teacher/projects', '/teacher/evaluations', '/student', '/student/tasks', '/student/profile', '/research', '/research/templates', '/research/resources', '/admin', '/admin/users', '/admin/schools', '/admin/ai-agents', '/admin/ai-calls', '/admin/audit-logs', '/admin/settings']
+  const availableRoots = ['/teacher', '/teacher/ai/lesson-plan', '/teacher/projects', '/teacher/evaluations', '/student', '/student/tasks', '/student/profile', '/research', '/research/templates', '/research/resources', '/admin', '/admin/trial-delivery', '/admin/users', '/admin/schools', '/admin/ai-agents', '/admin/ai-calls', '/admin/audit-logs', '/admin/settings']
 
   if (availableRoots.includes(path)) {
     router.push(index)
