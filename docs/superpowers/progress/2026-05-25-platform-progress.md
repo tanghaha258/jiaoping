@@ -97,7 +97,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Add backend delivery package contract and tests.
   - [x] Add read-only delivery package aggregation endpoint.
   - [x] Add admin delivery package page and download actions.
-  - [ ] Run release verification, browser smoke, commit, and push.
+  - [x] Run release verification, browser smoke, commit, and push.
 
 ## Decisions
 
@@ -115,9 +115,11 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - Phase 11 Batch 1 will extend the Admin Dashboard instead of adding a new route: the trial operations runbook should group existing readiness evidence into ordered rehearsal stages and keep Provider rehearsal behind the local AI contract.
 - Phase 11 Batch 2 will store runbook rehearsal evidence in append-only AuditLog records first, avoiding a dedicated table until trial sites prove they need richer reporting.
 - Phase 12 uses a dedicated `/admin/trial-delivery` surface instead of further growing the Admin Dashboard. The first batch is read-only: aggregate readiness, runbook, and evidence records into Markdown/JSON materials without signatures, uploads, or Provider calls.
+- P13 will address teacher menu reachable-page gaps and remaining page-by-page visual polish after the P12 delivery package closeout.
 
 ## Completed Work
 
+- 2026-05-29: Completed P12 Batch 1 release verification and browser smoke. Restarted local backend/frontend from the current workspace after finding stale services on ports 8000/3000, confirmed `GET /api/v1/dashboard/trial-delivery/package` returns the delivery package data and Markdown/JSON materials for `admin`, and ran `scripts/check-release.ps1` successfully with backend tests (`71 passed`, 5 warnings), backend compile, frontend text health, route smoke (`checked_routes=28`), and frontend build. Browser smoke logged in as `admin`, opened `http://127.0.0.1:3000/admin/trial-delivery`, confirmed visible anchors `试点交付包`, `现场验收清单`, `演示脚本`, `测试账号交付`, `复制交付材料`, `下载 Markdown`, and `下载 JSON`, with zero browser console errors or warnings. Copy/download handlers are covered by the page implementation and static route/build checks; the in-app browser download/clipboard automation channel was unstable when directly inspecting those events.
 - 2026-05-29: Started P12 Batch 1 Task 1 backend TDD. Added `backend/tests/test_trial_delivery_package.py` covering admin access, school-admin access, teacher blocking, required delivery package shape, readiness/runbook evidence, safe account handout wording, Markdown/JSON material output, and blocked runbook evidence status. Verified the red state with `python -m pytest backend/tests/test_trial_delivery_package.py -q` (`3 failed`, 5 warnings) because `/api/v1/dashboard/trial-delivery/package` is not implemented yet and returns 404.
 - 2026-05-29: Completed P12 Batch 1 backend delivery package endpoint. Added read-only `GET /api/v1/dashboard/trial-delivery/package`, reusing readiness, runbook stages, and AuditLog-backed rehearsal records to produce acceptance checklist data, safe account handout guidance, demo script steps, and Markdown/JSON materials without exposing secrets. Verified with `python -m pytest backend/tests/test_trial_delivery_package.py backend/tests/test_trial_runbook_records.py backend/tests/test_trial_operations_runbook.py backend/tests/test_trial_readiness.py -q` (`13 passed`, 5 warnings) and `python -m compileall backend\app`.
 - 2026-05-29: Started P12 Batch 1 Task 3 frontend TDD. Added `backend/tests/test_trial_delivery_page.py` covering dashboard API types, `/admin/trial-delivery` route and menu entry, `TrialDeliveryPackage.vue` visible anchors, and route-smoke protection. Verified the red state with `python -m pytest backend/tests/test_trial_delivery_page.py -q` (`4 failed`, 1 warning) because the frontend API helper, route/menu entry, page component, and route smoke anchors are not implemented yet.
