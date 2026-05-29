@@ -90,6 +90,14 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
   - [x] Add runbook evidence record APIs and tests.
   - [x] Add admin dashboard evidence recording UI.
   - [x] Run release verification, browser smoke, commit, and push.
+- [ ] Phase 12: Build trial delivery package and onsite acceptance materials.
+  - [x] Confirm P12 direction as an in-platform delivery center with downloadable materials.
+  - [x] Add P12 delivery package design.
+  - [ ] Write P12 Batch 1 implementation plan.
+  - [ ] Add backend delivery package contract and tests.
+  - [ ] Add read-only delivery package aggregation endpoint.
+  - [ ] Add admin delivery package page and download actions.
+  - [ ] Run release verification, browser smoke, commit, and push.
 
 ## Decisions
 
@@ -106,9 +114,11 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - Phase 10 AI architecture remains provider-neutral: GJT is needed for the competition integration, while local contracts must also support mock, local model, and OpenAI-compatible providers later.
 - Phase 11 Batch 1 will extend the Admin Dashboard instead of adding a new route: the trial operations runbook should group existing readiness evidence into ordered rehearsal stages and keep Provider rehearsal behind the local AI contract.
 - Phase 11 Batch 2 will store runbook rehearsal evidence in append-only AuditLog records first, avoiding a dedicated table until trial sites prove they need richer reporting.
+- Phase 12 uses a dedicated `/admin/trial-delivery` surface instead of further growing the Admin Dashboard. The first batch is read-only: aggregate readiness, runbook, and evidence records into Markdown/JSON materials without signatures, uploads, or Provider calls.
 
 ## Completed Work
 
+- 2026-05-29: Confirmed P12 Scheme B for an in-platform trial delivery center with downloadable materials. Added `docs/superpowers/specs/2026-05-29-trial-delivery-package-design.md`, covering the read-only delivery package endpoint, dedicated `/admin/trial-delivery` page, readiness/runbook/evidence aggregation, safe demo-account handout wording, Markdown/JSON client-side downloads, testing strategy, and P12 Batch 1/Batch 2 split.
 - 2026-05-28: Confirmed P10 Batch 3 Scheme B for AI call failure observability. Added `docs/superpowers/specs/2026-05-28-ai-call-failure-observability-design.md` covering structured failure metadata, provider failure categories, diagnostics summary, `/admin/ai-calls` filtering and operations diagnosis, and trial readiness linkage. This is a docs-only design checkpoint before TDD implementation.
 - 2026-05-28: Completed P10 Batch 3 backend diagnostics checkpoint. Added safe `diagnostic_metadata` to provider results and AI call persistence, classified provider/config/upstream/contract failures, exposed `error_category` and `/api/v1/ai/calls/diagnostics/summary`, preserved seeded string IDs in the AI call path, fixed async agent lazy-loading in call serialization, and linked real-provider configuration/failure risk into trial readiness. Verified with `python -m compileall backend\app`, `python -m pytest backend/tests/test_ai_call_failure_observability.py backend/tests/test_ai_provider_readiness.py backend/tests/test_domestic_provider_contract.py -q` (`16 passed`, 5 warnings), and the dedicated readiness target (`5 passed`, 5 warnings).
 - 2026-05-28: Completed P10 Batch 3 frontend diagnostics UI. Added AI call diagnostic metadata/summary TypeScript contracts, `error_category` filtering for `/admin/ai-calls`, diagnostics summary cards, failure-category table column, and a detail-drawer diagnosis panel showing failure category, retryability, remediation, upstream status, and safe metadata. Verified with `python -m pytest backend/tests/test_ai_call_page_polish.py backend/tests/test_frontend_route_smoke.py backend/tests/test_frontend_text_health.py -q` (`7 passed`, 1 warning) and `npm run build`.
