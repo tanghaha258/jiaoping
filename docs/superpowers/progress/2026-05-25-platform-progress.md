@@ -93,7 +93,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 - [ ] Phase 12: Build trial delivery package and onsite acceptance materials.
   - [x] Confirm P12 direction as an in-platform delivery center with downloadable materials.
   - [x] Add P12 delivery package design.
-  - [ ] Write P12 Batch 1 implementation plan.
+  - [x] Write P12 Batch 1 implementation plan.
   - [ ] Add backend delivery package contract and tests.
   - [ ] Add read-only delivery package aggregation endpoint.
   - [ ] Add admin delivery package page and download actions.
@@ -118,6 +118,7 @@ Build an operational AI-agent-driven teaching-assessment workflow platform:
 
 ## Completed Work
 
+- 2026-05-29: Added P12 Batch 1 implementation plan at `docs/superpowers/plans/2026-05-29-trial-delivery-package.md`, splitting the delivery package MVP into backend red tests, read-only aggregation endpoint, frontend red tests, admin delivery package page, Markdown/JSON downloads, release verification, and browser smoke. The plan keeps P13 teacher menu reachable-page cleanup as a recorded follow-up risk rather than mixing it into P12.
 - 2026-05-29: Confirmed P12 Scheme B for an in-platform trial delivery center with downloadable materials. Added `docs/superpowers/specs/2026-05-29-trial-delivery-package-design.md`, covering the read-only delivery package endpoint, dedicated `/admin/trial-delivery` page, readiness/runbook/evidence aggregation, safe demo-account handout wording, Markdown/JSON client-side downloads, testing strategy, and P12 Batch 1/Batch 2 split.
 - 2026-05-28: Confirmed P10 Batch 3 Scheme B for AI call failure observability. Added `docs/superpowers/specs/2026-05-28-ai-call-failure-observability-design.md` covering structured failure metadata, provider failure categories, diagnostics summary, `/admin/ai-calls` filtering and operations diagnosis, and trial readiness linkage. This is a docs-only design checkpoint before TDD implementation.
 - 2026-05-28: Completed P10 Batch 3 backend diagnostics checkpoint. Added safe `diagnostic_metadata` to provider results and AI call persistence, classified provider/config/upstream/contract failures, exposed `error_category` and `/api/v1/ai/calls/diagnostics/summary`, preserved seeded string IDs in the AI call path, fixed async agent lazy-loading in call serialization, and linked real-provider configuration/failure risk into trial readiness. Verified with `python -m compileall backend\app`, `python -m pytest backend/tests/test_ai_call_failure_observability.py backend/tests/test_ai_provider_readiness.py backend/tests/test_domestic_provider_contract.py -q` (`16 passed`, 5 warnings), and the dedicated readiness target (`5 passed`, 5 warnings).
