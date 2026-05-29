@@ -149,6 +149,16 @@ async def list_trial_runbook_records(
     return success_response(data=data, message="Trial runbook records loaded")
 
 
+@router.get("/trial-delivery/package")
+async def get_trial_delivery_package(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("system_admin", "school_admin", "region_admin")),
+):
+    """Get the read-only onsite trial delivery package."""
+    data = await DashboardService.get_trial_delivery_package(db=db, user=current_user)
+    return success_response(data=data, message="Trial delivery package generated")
+
+
 @router.get("/project-trends")
 async def get_project_trends(
     db: AsyncSession = Depends(get_db),

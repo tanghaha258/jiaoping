@@ -1,5 +1,6 @@
 """Dashboard service: aggregate statistics for the admin/teacher dashboard."""
 
+import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -39,6 +40,76 @@ class DashboardService:
     }
     TRIAL_RUNBOOK_RECORD_ACTION = "trial_runbook.record"
     TRIAL_RUNBOOK_RECORD_TARGET_TYPE = "trial_runbook_stage"
+    TRIAL_DELIVERY_DEMO_SCRIPT = [
+        {
+            "step": 1,
+            "role": "system_admin",
+            "title": "管理员打开试点交付包",
+            "route": "/admin/trial-delivery",
+            "expected_evidence": "能看到现场验收清单、演示脚本、测试账号交付和下载材料。",
+        },
+        {
+            "step": 2,
+            "role": "teacher",
+            "title": "教师打开跨学科项目",
+            "route": "/teacher/projects",
+            "expected_evidence": "能看到项目列表、项目详情和课时任务入口。",
+        },
+        {
+            "step": 3,
+            "role": "teacher",
+            "title": "教师进入 AI 教学方案",
+            "route": "/teacher/ai/lesson-plan",
+            "expected_evidence": "能生成或查看待审阅的 AI 教学方案草案，并保持教师采纳门槛。",
+        },
+        {
+            "step": 4,
+            "role": "student",
+            "title": "学生查看学习任务",
+            "route": "/student/tasks",
+            "expected_evidence": "能看到已发布任务并进入任务详情。",
+        },
+        {
+            "step": 5,
+            "role": "teacher",
+            "title": "教师审阅提交并确认评价",
+            "route": "/teacher/evaluations",
+            "expected_evidence": "能查看评价记录，确认后的反馈对学生可见。",
+        },
+        {
+            "step": 6,
+            "role": "system_admin",
+            "title": "管理员核验 AI 调用和审计证据",
+            "route": "/admin/ai-calls",
+            "expected_evidence": "能查看 AI 调用观测、失败诊断和调用台账。",
+        },
+    ]
+    TRIAL_DELIVERY_ACCOUNTS = [
+        {
+            "role": "system_admin",
+            "username": "admin",
+            "password_hint": "见本地账号交付清单；正式试点前必须重置。",
+            "purpose": "查看交付包、readiness、AI Provider、审计日志和系统设置。",
+        },
+        {
+            "role": "school_admin",
+            "username": "schooladmin",
+            "password_hint": "见本地账号交付清单；正式试点前必须重置。",
+            "purpose": "核对学校、班级、教师学生账号和试运行演练记录。",
+        },
+        {
+            "role": "teacher",
+            "username": "teacher001",
+            "password_hint": "见本地账号交付清单；正式试点前必须重置。",
+            "purpose": "演示项目、任务、AI 教学方案、提交审阅和评价确认。",
+        },
+        {
+            "role": "student",
+            "username": "student001",
+            "password_hint": "见本地账号交付清单；正式试点前必须重置。",
+            "purpose": "演示学习任务查看、作品提交和反馈查看。",
+        },
+    ]
 
     @staticmethod
     async def get_overview(
@@ -454,6 +525,169 @@ class DashboardService:
             "page_size": page_size,
             "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 0,
         }
+
+    @staticmethod
+    async def get_trial_delivery_package(db: AsyncSession, user: User) -> dict:
+        """Build a read-only handover package from readiness and rehearsal evidence."""
+        readiness = await DashboardService.get_trial_readiness(db)
+        runbook = await DashboardService.get_trial_operations_runbook(db)
+        records = await DashboardService.list_trial_runbook_records(
+            db=db,
+            user=user,
+            page=1,
+            page_size=50,
+        )
+        latest_by_stage = DashboardService._latest_runbook_records_by_stage(records["items"])
+        checklist = [
+            DashboardService._trial_delivery_checklist_item(
+                stage,
+                latest_by_stage.get(stage["key"]),
+            )
+            for stage in runbook["stages"]
+        ]
+        record_summary = DashboardService._trial_delivery_record_summary(records["items"])
+        summary = {
+            "readiness_ok": readiness["summary"]["ok"],
+            "readiness_warning": readiness["summary"]["warning"],
+            "readiness_error": readiness["summary"]["error"],
+            **record_summary,
+        }
+        package = {
+            "status": DashboardService._trial_delivery_status(readiness, checklist),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "summary": summary,
+            "audience_sections": DashboardService._trial_delivery_audience_sections(),
+            "acceptance_checklist": checklist,
+            "demo_script": DashboardService.TRIAL_DELIVERY_DEMO_SCRIPT,
+            "accounts": DashboardService.TRIAL_DELIVERY_ACCOUNTS,
+        }
+        package["materials"] = {
+            "markdown": DashboardService._trial_delivery_markdown(package),
+            "json": json.dumps(package, ensure_ascii=False, indent=2),
+        }
+        return package
+
+    @staticmethod
+    def _latest_runbook_records_by_stage(records: list[dict]) -> dict[str, dict]:
+        latest: dict[str, dict] = {}
+        for record in records:
+            stage_key = record.get("stage_key")
+            if stage_key and stage_key not in latest:
+                latest[stage_key] = record
+        return latest
+
+    @staticmethod
+    def _trial_delivery_record_summary(records: list[dict]) -> dict:
+        return {
+            "runbook_checked": sum(1 for record in records if record.get("status") == "checked"),
+            "runbook_blocked": sum(1 for record in records if record.get("status") == "blocked"),
+            "runbook_skipped": sum(1 for record in records if record.get("status") == "skipped"),
+        }
+
+    @staticmethod
+    def _trial_delivery_checklist_item(stage: dict, latest_record: Optional[dict]) -> dict:
+        return {
+            "key": stage["key"],
+            "title": stage["title"],
+            "status": stage["status"],
+            "route": stage["route"],
+            "owner": stage["owner"],
+            "primary_action": stage["primary_action"],
+            "evidence": stage["evidence"],
+            "next_step": stage["next_step"],
+            "latest_record": latest_record,
+        }
+
+    @staticmethod
+    def _trial_delivery_status(readiness: dict, checklist: list[dict]) -> str:
+        if readiness["summary"]["error"]:
+            return "action_required"
+        if any(item["status"] == "error" for item in checklist):
+            return "action_required"
+        if any((item.get("latest_record") or {}).get("status") == "blocked" for item in checklist):
+            return "action_required"
+        return "ready"
+
+    @staticmethod
+    def _trial_delivery_audience_sections() -> list[dict]:
+        return [
+            {
+                "key": "operator",
+                "title": "平台管理员交付要点",
+                "items": ["检查 readiness", "下载交付材料", "核对 AI Provider 和审计证据"],
+            },
+            {
+                "key": "school_admin",
+                "title": "学校管理员交付要点",
+                "items": ["确认组织数据", "核对教师与学生账号", "保存初始密码发放清单"],
+            },
+            {
+                "key": "reviewer",
+                "title": "评委验收要点",
+                "items": ["查看完整教学闭环", "查看 AI 使用证据", "查看安全和权限边界"],
+            },
+        ]
+
+    @staticmethod
+    def _trial_delivery_markdown(package: dict) -> str:
+        lines = [
+            "# 试点交付包",
+            "",
+            f"- 生成时间：{package['generated_at']}",
+            f"- 状态：{'可交付' if package['status'] == 'ready' else '需要处理'}",
+            f"- readiness：正常 {package['summary']['readiness_ok']} / 提醒 {package['summary']['readiness_warning']} / 阻断 {package['summary']['readiness_error']}",
+            f"- 演练记录：已检查 {package['summary']['runbook_checked']} / 阻断 {package['summary']['runbook_blocked']} / 已跳过 {package['summary']['runbook_skipped']}",
+            "",
+            "## 现场验收清单",
+            "",
+        ]
+        for item in package["acceptance_checklist"]:
+            latest = item.get("latest_record")
+            latest_text = "尚无演练记录"
+            if latest:
+                latest_text = (
+                    f"{latest.get('status')} / "
+                    f"{latest.get('operator_name') or '管理员'} / "
+                    f"{latest.get('note') or '未填写备注'}"
+                )
+            lines.extend([
+                f"### {item['title']}",
+                f"- 状态：{DashboardService._status_label(item['status'])}",
+                f"- 责任角色：{item['owner']}",
+                f"- 处理入口：{item['route']}",
+                f"- 最新演练：{latest_text}",
+                "- 证据：",
+            ])
+            for evidence in item["evidence"]:
+                lines.append(f"  - {evidence}")
+            if latest and latest.get("evidence"):
+                lines.append("- 演练补充证据：")
+                for evidence in latest["evidence"]:
+                    lines.append(f"  - {evidence}")
+            lines.append("")
+
+        lines.extend(["## 演示脚本", ""])
+        for step in package["demo_script"]:
+            lines.append(
+                f"{step['step']}. [{step['role']}] {step['title']}："
+                f"{step['route']}；验收证据：{step['expected_evidence']}"
+            )
+
+        lines.extend(["", "## 测试账号交付", ""])
+        for account in package["accounts"]:
+            lines.append(
+                f"- {account['role']} / {account['username']}："
+                f"{account['purpose']}（{account['password_hint']}）"
+            )
+
+        lines.extend([
+            "",
+            "## 交付提醒",
+            "",
+            "- 本材料不包含密码哈希、API Key、JWT Secret 或 Provider 密钥。",
+            "- 正式试点前必须完成测试账号密码重置。",
+        ])
+        return "\n".join(lines)
 
     @staticmethod
     async def _count(db: AsyncSession, model, *conditions) -> int:
